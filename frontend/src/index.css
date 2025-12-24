@@ -1,0 +1,378 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* ===== DARK THEME (Default) ===== */
+:root,
+[data-theme="dark"] {
+  /* Background Colors - Darker, more minimal */
+  --bg-base: #030616;
+  --bg-main: #050818;
+  --bg-card: #0f1724;
+  --bg-card-hover: rgba(15, 23, 42, 0.9);
+  --bg-input: rgba(15, 23, 42, 0.7);
+  
+  /* Border Colors - Subtle slate */
+  --border-default: #1e293b;
+  --border-subtle: rgba(30, 41, 59, 0.5);
+  
+  /* Text Colors - Muted slate */
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  --text-inverse: #030616;
+  
+  /* Status Colors */
+  --status-pending: #fbbf24;
+  --status-pending-bg: rgba(251, 191, 36, 0.05);
+  --status-pending-text: #fde68a;
+  --status-scheduled: #38bdf8;
+  --status-scheduled-bg: rgba(56, 189, 248, 0.05);
+  --status-scheduled-text: #bae6fd;
+  --status-delivered: #facc15;
+  --status-delivered-bg: rgba(250, 204, 21, 0.08);
+  --status-delivered-text: #fef08a;
+  --status-paid: #4ade80;
+  --status-paid-bg: rgba(74, 222, 128, 0.05);
+  --status-paid-text: #bbf7d0;
+  --status-cancelled: #fb7185;
+  --status-cancelled-bg: rgba(251, 113, 133, 0.05);
+  --status-cancelled-text: #fda4af;
+  
+  /* Shape - More rounded */
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
+  --radius-pill: 999px;
+  
+  /* Typography */
+  --font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', sans-serif;
+  --font-size-xxs: 0.65rem;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.5rem;
+  
+  /* Legacy mappings */
+  --primary: #38bdf8;
+  --secondary: #94a3b8;
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --error: #fb7185;
+  --grey: #64748b;
+  --light-grey: rgba(15, 23, 42, 0.6);
+  --border: #1e293b;
+  --text: #f1f5f9;
+  --text-light: #cbd5e1;
+  --shadow: none;
+  --shadow-lg: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* ===== LIGHT THEME ===== */
+[data-theme="light"] {
+  /* Background Colors - Clean, minimal whites/grays */
+  --bg-base: #f8fafc;
+  --bg-main: #f1f5f9;
+  --bg-card: #ffffff;
+  --bg-card-hover: rgba(241, 245, 249, 0.9);
+  --bg-input: #ffffff;
+  
+  /* Border Colors */
+  --border-default: #e2e8f0;
+  --border-subtle: rgba(226, 232, 240, 0.7);
+  
+  /* Text Colors */
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --text-dim: #94a3b8;
+  --text-inverse: #f8fafc;
+  
+  /* Status Colors - Adjusted for light mode */
+  --status-pending: #d97706;
+  --status-pending-bg: rgba(251, 191, 36, 0.15);
+  --status-pending-text: #92400e;
+  --status-scheduled: #0284c7;
+  --status-scheduled-bg: rgba(56, 189, 248, 0.15);
+  --status-scheduled-text: #0369a1;
+  --status-delivered: #ca8a04;
+  --status-delivered-bg: rgba(250, 204, 21, 0.15);
+  --status-delivered-text: #854d0e;
+  --status-paid: #16a34a;
+  --status-paid-bg: rgba(74, 222, 128, 0.15);
+  --status-paid-text: #166534;
+  --status-cancelled: #e11d48;
+  --status-cancelled-bg: rgba(251, 113, 133, 0.15);
+  --status-cancelled-text: #be123c;
+  
+  /* Legacy mappings for light */
+  --primary: #0284c7;
+  --secondary: #64748b;
+  --success: #16a34a;
+  --warning: #d97706;
+  --error: #e11d48;
+  --grey: #94a3b8;
+  --light-grey: rgba(241, 245, 249, 0.8);
+  --border: #e2e8f0;
+  --text: #0f172a;
+  --text-light: #334155;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+body {
+  font-family: var(--font-family);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--bg-main);
+  color: var(--text-primary);
+  line-height: 1.6;
+  font-size: var(--font-size-sm);
+}
+
+code {
+  font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Courier New', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Utility Classes */
+.container {
+  max-width: 1152px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.btn {
+  padding: 8px 16px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-decoration: none;
+  font-family: var(--font-family);
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.btn:disabled {
+  background: var(--bg-card);
+  color: var(--text-dim);
+  cursor: not-allowed;
+  border-color: var(--border-subtle);
+  opacity: 0.6;
+}
+
+.btn-primary {
+  background: var(--text-primary);
+  color: var(--text-inverse);
+  border-color: var(--text-primary);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--text-secondary);
+}
+
+.btn-success {
+  background: var(--status-paid);
+  color: var(--text-inverse);
+  border-color: var(--status-paid);
+}
+
+.btn-warning {
+  background: var(--status-pending);
+  color: var(--text-inverse);
+  border-color: var(--status-pending);
+}
+
+.btn-secondary {
+  background: var(--bg-card);
+  color: var(--text-muted);
+  border-color: var(--border-default);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+}
+
+.card {
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  padding: 16px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border-default);
+  box-shadow: var(--shadow);
+}
+
+.status-badge {
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-xxs);
+  font-weight: 500;
+  text-transform: uppercase;
+  display: inline-block;
+  letter-spacing: 0.05em;
+  border: 1px solid;
+}
+
+.status-pending {
+  background: var(--status-pending-bg);
+  color: var(--status-pending-text);
+  border-color: var(--status-pending);
+}
+
+.status-scheduled {
+  background: var(--status-scheduled-bg);
+  color: var(--status-scheduled-text);
+  border-color: var(--status-scheduled);
+}
+
+.status-delivered {
+  background: var(--status-delivered-bg);
+  color: var(--status-delivered-text);
+  border-color: var(--status-delivered);
+}
+
+.status-paid {
+  background: var(--status-paid-bg);
+  color: var(--status-paid-text);
+  border-color: var(--status-paid);
+}
+
+.status-cancelled {
+  background: var(--status-cancelled-bg);
+  color: var(--status-cancelled-text);
+  border-color: var(--status-cancelled);
+}
+
+/* Loading Spinner */
+.spinner {
+  border: 2px solid rgba(148, 163, 184, 0.2);
+  border-top: 2px solid var(--text-muted);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  animation: spin 1s linear infinite;
+  margin: 40px auto;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Form Styles */
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: var(--text-primary);
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: 10px 16px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  transition: all 0.2s;
+  font-family: var(--font-family);
+  background: var(--bg-input);
+  color: var(--text-primary);
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+  color: var(--text-dim);
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: var(--bg-card);
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.form-error {
+  color: var(--status-cancelled);
+  font-size: var(--font-size-xxs);
+  margin-top: 4px;
+}
+
+/* Alert Messages */
+.alert {
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+  font-size: var(--font-size-xs);
+  border: 1px solid;
+}
+
+.alert-success {
+  background: rgba(74, 222, 128, 0.1);
+  color: var(--status-delivered);
+  border-color: rgba(74, 222, 128, 0.3);
+}
+
+.alert-error {
+  background: rgba(251, 113, 133, 0.1);
+  color: var(--status-cancelled);
+  border-color: rgba(251, 113, 133, 0.3);
+}
+
+.alert-info {
+  background: rgba(56, 189, 248, 0.1);
+  color: var(--status-scheduled);
+  border-color: rgba(56, 189, 248, 0.3);
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: var(--radius-sm);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
+
+/* Selection */
+::selection {
+  background: rgba(148, 163, 184, 0.3);
+  color: var(--text-primary);
+}

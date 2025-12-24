@@ -1,0 +1,126 @@
+.login-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-base);
+  padding: 24px;
+  position: relative;
+}
+
+.login-theme-toggle {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border-default);
+  background: var(--bg-card);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 300;
+  transition: all 0.2s ease;
+  color: #facc15;
+}
+
+.login-theme-toggle:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--text-dim);
+  transform: scale(1.05);
+}
+
+.login-theme-toggle:active {
+  transform: scale(0.95);
+}
+
+/* Moon icon in light mode */
+[data-theme="light"] .login-theme-toggle {
+  color: var(--text-muted);
+}
+
+.login-box {
+  background: var(--bg-card);
+  padding: 40px 32px;
+  border-radius: var(--radius-xl);
+  max-width: 420px;
+  width: 100%;
+  border: 1px solid var(--border-default);
+  box-shadow: var(--shadow-lg);
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.login-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.8;
+}
+
+.login-header h1 {
+  color: var(--text-primary);
+  margin-bottom: 6px;
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.login-header p {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.btn-full {
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px 20px;
+}
+
+.login-footer {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-subtle);
+  text-align: center;
+}
+
+.login-footer p {
+  color: var(--text-dim);
+  font-size: var(--font-size-xxs);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.login-footer ul {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.login-footer li {
+  color: var(--text-muted);
+  font-size: var(--font-size-xxs);
+  font-family: 'SF Mono', monospace;
+  background: var(--bg-main);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+}
+
+.login-footer li strong {
+  color: var(--text-secondary);
+}
+
+@media (max-width: 480px) {
+  .login-box {
+    padding: 32px 24px;
+  }
+}
