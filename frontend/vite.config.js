@@ -6,14 +6,14 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       includeAssets: ['apple-touch-icon.png', 'favicon-32x32.png'],
       manifest: {
         name: 'Consigned By Design',
         short_name: 'CBD',
         description: 'Delivery and pickup management for Consigned By Design',
-        theme_color: '#000000',
-        background_color: '#000000',
+        theme_color: '#161616',
+        background_color: '#161616',
         display: 'standalone',
         orientation: 'portrait-primary',
         scope: '/',

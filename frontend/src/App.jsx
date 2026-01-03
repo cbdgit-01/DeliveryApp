@@ -12,6 +12,7 @@ import CreateTask from './pages/CreateTask';
 import CreatePickup from './pages/CreatePickup';
 import PickupDetail from './pages/PickupDetail';
 import SMSRequests from './pages/SMSRequests';
+import UpdatePrompt from './components/UpdatePrompt';
 import './App.css';
 
 // Protected Route Component
@@ -137,6 +138,7 @@ function App() {
           <AppRoutes />
         </Router>
       </AuthProvider>
+      <UpdatePrompt />
     </ThemeProvider>
   );
 }
