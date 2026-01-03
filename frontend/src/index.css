@@ -4,9 +4,16 @@
   box-sizing: border-box;
 }
 
-/* iOS Safe Areas */
+/* iOS Safe Areas & Overscroll */
 html {
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  background: var(--bg-main);
+  /* Prevent overscroll bounce showing different color */
+  overscroll-behavior: none;
+}
+
+html, body {
+  /* Use same background to prevent color strips on overscroll */
+  background: var(--bg-main);
 }
 
 /* ===== DARK THEME (Default) ===== */
