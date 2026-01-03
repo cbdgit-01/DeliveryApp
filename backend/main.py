@@ -75,9 +75,15 @@ app.include_router(sms_router.router)
 app.include_router(uploads_router.router)
 
 
-@app.get("/")
-def root():
-    """Root endpoint"""
+@app.get("/health")
+def health_check():
+    """Health check endpoint"""
+    return {"status": "healthy"}
+
+
+@app.get("/api-info")
+def api_info():
+    """API info endpoint"""
     return {
         "name": "Consigned By Design API",
         "version": "1.0.0",
@@ -85,29 +91,43 @@ def root():
     }
 
 
-@app.get("/health")
-def health_check():
-    """Health check endpoint"""
-    return {"status": "healthy"}
-
-
 # Serve frontend static files in production
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 if os.path.exists(STATIC_DIR):
-    app.mount("/assets", StaticFiles(directory=os.path.join(STATIC_DIR, "assets")), name="assets")
+    # Mount assets folder
+    assets_dir = os.path.join(STATIC_DIR, "assets")
+    if os.path.exists(assets_dir):
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
     
     @app.get("/{full_path:path}")
     async def serve_frontend(full_path: str):
         """Serve frontend for all non-API routes"""
         # Don't serve frontend for API routes
-        if full_path.startswith(("api/", "auth/", "sms/", "webhooks/", "schedule/")):
+        if full_path.startswith(("api/", "auth/", "sms/", "webhooks/", "schedule/", "health", "api-info")):
             return {"error": "Not found"}
         
+        # Try to serve the exact file
         file_path = os.path.join(STATIC_DIR, full_path)
         if os.path.exists(file_path) and os.path.isfile(file_path):
             return FileResponse(file_path)
-        # Return index.html for SPA routing
-        return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+        
+        # Return index.html for SPA routing (React Router)
+        index_path = os.path.join(STATIC_DIR, "index.html")
+        if os.path.exists(index_path):
+            return FileResponse(index_path)
+        
+        return {"error": "Frontend not found"}
+else:
+    # No static folder - show API info at root
+    @app.get("/")
+    def root():
+        """Root endpoint when no frontend"""
+        return {
+            "name": "Consigned By Design API",
+            "version": "1.0.0", 
+            "status": "operational",
+            "message": "Frontend not deployed. Visit /health for health check."
+        }
 
 
 if __name__ == "__main__":
