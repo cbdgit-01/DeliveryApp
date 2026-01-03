@@ -39,8 +39,7 @@ const Layout = () => {
         <div className="navbar-container">
           <div className="navbar-brand">
             <Link to="/" onClick={closeMenu}>
-              <span className="brand-icon">📦</span>
-              <span className="brand-text">Deliveries</span>
+              <img src="/CBD.png" alt="CBD" className="brand-logo" />
             </Link>
           </div>
 
@@ -57,28 +56,28 @@ const Layout = () => {
                   className={`nav-link ${isActive('/') ? 'active' : ''}`}
                   onClick={closeMenu}
                 >
-                  🚚 Deliveries
+                  Deliveries
                 </Link>
                 <Link
                   to="/pickups"
                   className={`nav-link ${isActive('/pickups') ? 'active' : ''}`}
                   onClick={closeMenu}
                 >
-                  📥 Pickups
+                  Pickups
                 </Link>
                 <Link
                   to="/calendar"
                   className={`nav-link ${isActive('/calendar') ? 'active' : ''}`}
                   onClick={closeMenu}
                 >
-                  📅 Calendar
+                  Calendar
                 </Link>
                 <Link
-                  to="/tasks/new"
-                  className={`nav-link ${isActive('/tasks/new') ? 'active' : ''}`}
+                  to="/sms"
+                  className={`nav-link ${isActive('/sms') ? 'active' : ''}`}
                   onClick={closeMenu}
                 >
-                  + New Delivery
+                  SMS
                 </Link>
               </>
             )}

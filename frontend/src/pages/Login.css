@@ -63,6 +63,13 @@
   opacity: 0.8;
 }
 
+.login-logo {
+  width: 180px;
+  height: auto;
+  margin-bottom: 16px;
+  border-radius: 8px;
+}
+
 .login-header h1 {
   color: var(--text-primary);
   margin-bottom: 6px;

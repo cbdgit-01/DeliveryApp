@@ -123,7 +123,7 @@ const Dashboard = () => {
     <div className="dashboard" ref={containerRef}>
       <div className="dashboard-header">
         <div>
-          <h1>🚚 Delivery Dashboard</h1>
+          <h1>Delivery Dashboard</h1>
           <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', marginTop: '4px' }}>
             Manage deliveries, schedule routes, track payments.
           </p>
@@ -211,7 +211,6 @@ const Dashboard = () => {
       <div className="tasks-list">
         {filteredTasks.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-icon">📭</div>
             <h3>No deliveries found</h3>
             <p>
               {searchQuery

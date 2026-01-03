@@ -1,22 +1,41 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
+import { pickupsAPI } from '../services/api';
 import anime from 'animejs';
 import './Dashboard.css';
 
 const PickupDashboard = () => {
   const [pickups, setPickups] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState({
+    pending_review: 0,
+    approved: 0,
+    scheduled: 0,
+    completed: 0,
+    declined: 0,
+  });
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('active');
   const [searchQuery, setSearchQuery] = useState('');
   const containerRef = useRef(null);
 
-  // Placeholder stats - will be populated when pickup API is ready
-  const stats = {
-    pending: 0,      // Awaiting review
-    approved: 0,     // Approved, awaiting scheduling
-    scheduled: 0,    // Scheduled for pickup
-    completed: 0,    // Picked up
-    declined: 0,     // Declined requests
+  const fetchPickups = async () => {
+    try {
+      const [pickupsRes, statsRes] = await Promise.all([
+        pickupsAPI.list(),
+        pickupsAPI.getStats()
+      ]);
+      setPickups(pickupsRes.data);
+      setStats(statsRes.data);
+    } catch (error) {
+      console.error('Error fetching pickups:', error);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => {
+    fetchPickups();
+  }, []);
 
   // Entrance animation for cards
   useEffect(() => {
@@ -33,7 +52,68 @@ const PickupDashboard = () => {
       delay: (_el, i) => i * 70,
       easing: 'easeOutQuad',
     });
-  }, [pickups, loading]);
+  }, [pickups, loading, filter, searchQuery]);
+
+  const getFilteredPickups = () => {
+    let filtered = pickups;
+
+    // Apply status filter
+    if (filter === 'active') {
+      filtered = filtered.filter(p => 
+        ['pending_review', 'approved', 'scheduled'].includes(p.status)
+      );
+    } else if (filter !== 'all') {
+      filtered = filtered.filter(p => p.status === filter);
+    }
+
+    // Apply search filter
+    if (searchQuery) {
+      const search = searchQuery.toLowerCase();
+      filtered = filtered.filter(p =>
+        p.customer_name.toLowerCase().includes(search) ||
+        p.item_description.toLowerCase().includes(search) ||
+        (p.customer_email && p.customer_email.toLowerCase().includes(search)) ||
+        p.customer_phone.includes(search)
+      );
+    }
+
+    return filtered;
+  };
+
+  const getStatusBadgeClass = (status) => {
+    switch (status) {
+      case 'pending_review': return 'status-pending';
+      case 'approved': return 'status-scheduled';
+      case 'scheduled': return 'status-delivered';
+      case 'completed': return 'status-paid';
+      case 'declined': return 'status-cancelled';
+      default: return 'status-pending';
+    }
+  };
+
+  const getStatusLabel = (status) => {
+    switch (status) {
+      case 'pending_review': return 'Pending Review';
+      case 'approved': return 'Approved';
+      case 'scheduled': return 'Scheduled';
+      case 'completed': return 'Completed';
+      case 'declined': return 'Declined';
+      default: return status;
+    }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Not scheduled';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+  };
+
+  const filteredPickups = getFilteredPickups();
 
   if (loading) {
     return <div className="spinner"></div>;
@@ -43,19 +123,19 @@ const PickupDashboard = () => {
     <div className="dashboard" ref={containerRef}>
       <div className="dashboard-header">
         <div>
-          <h1>📥 Pickup Dashboard</h1>
+          <h1>Pickup Dashboard</h1>
           <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', marginTop: '4px' }}>
             Review pickup requests, approve items, schedule pickups.
           </p>
         </div>
-        <button className="btn btn-primary" disabled style={{ opacity: 0.5, cursor: 'not-allowed' }}>
+        <Link to="/pickups/new" className="btn btn-primary">
           + New Pickup
-        </button>
+        </Link>
       </div>
 
       <div className="stats-grid">
         <div className="stat-card pending">
-          <div className="stat-number">{stats.pending}</div>
+          <div className="stat-number">{stats.pending_review}</div>
           <div className="stat-label">Pending Review</div>
         </div>
         <div className="stat-card scheduled">
@@ -96,8 +176,8 @@ const PickupDashboard = () => {
             Active
           </button>
           <button
-            className={`filter-btn ${filter === 'pending' ? 'active' : ''}`}
-            onClick={() => setFilter('pending')}
+            className={`filter-btn ${filter === 'pending_review' ? 'active' : ''}`}
+            onClick={() => setFilter('pending_review')}
           >
             Pending Review
           </button>
@@ -129,13 +209,67 @@ const PickupDashboard = () => {
       </div>
 
       <div className="tasks-list">
-        <div className="empty-state">
-          <div className="empty-icon">📥</div>
-          <h3>No pickup requests yet</h3>
-          <p>
-            Pickup requests will appear here when customers submit items for consignment review.
-          </p>
-        </div>
+        {filteredPickups.length === 0 ? (
+          <div className="empty-state">
+            <h3>No pickup requests found</h3>
+            <p>
+              {searchQuery
+                ? 'Try adjusting your search'
+                : filter === 'active'
+                ? 'No active pickup requests. Create one to get started!'
+                : `No ${filter.replace('_', ' ')} pickup requests.`}
+            </p>
+          </div>
+        ) : (
+          filteredPickups.map(pickup => (
+            <Link
+              to={`/pickups/${pickup.id}`}
+              key={pickup.id}
+              className="task-card"
+              data-pickup-card
+            >
+              <div className="task-card-header">
+                <div className="task-info">
+                  <h3>{pickup.customer_name}</h3>
+                  <p className="task-item">{pickup.item_description.substring(0, 60)}{pickup.item_description.length > 60 ? '...' : ''}</p>
+                </div>
+              </div>
+
+              <div className="task-card-body">
+                <div className="task-detail">
+                  <span className="task-detail-label">Items</span>
+                  <span>{pickup.item_count} item{pickup.item_count !== 1 ? 's' : ''}</span>
+                </div>
+                <div className="task-detail">
+                  <span className="task-detail-label">Address</span>
+                  <span>{pickup.pickup_city}, {pickup.pickup_state}</span>
+                </div>
+                <div className="task-detail">
+                  <span className="task-detail-label">Phone</span>
+                  <span>{pickup.customer_phone}</span>
+                </div>
+              </div>
+
+              <div className="task-card-actions">
+                <div className="task-scheduled">
+                  <div className="task-detail">
+                    <span className="task-detail-label">
+                      {pickup.status === 'completed' ? 'Completed' : 'Scheduled'}
+                    </span>
+                    <span>
+                      {pickup.status === 'completed'
+                        ? formatDate(pickup.completed_at)
+                        : formatDate(pickup.scheduled_start)}
+                    </span>
+                  </div>
+                </div>
+                <span className={getStatusBadgeClass(pickup.status)}>
+                  {getStatusLabel(pickup.status)}
+                </span>
+              </div>
+            </Link>
+          ))
+        )}
       </div>
     </div>
   );

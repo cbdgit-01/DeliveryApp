@@ -29,8 +29,12 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      // Unauthorized - clear token and redirect to login
+    // Only redirect on 401 if it's NOT a login attempt
+    // Login failures should be handled by the login form, not by redirecting
+    const isLoginRequest = error.config?.url?.includes('/auth/login');
+    
+    if (error.response?.status === 401 && !isLoginRequest) {
+      // Unauthorized on a protected route - clear token and redirect to login
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';
@@ -65,11 +69,45 @@ export const calendarAPI = {
       } 
     }),
   getUnscheduled: () => api.get('/api/calendar/unscheduled'),
+  getUnscheduledPickups: () => api.get('/api/calendar/unscheduled-pickups'),
 };
 
 // Items API
 export const itemsAPI = {
   lookup: (sku) => api.get('/api/items/lookup', { params: { sku } }),
+};
+
+// Pickups API
+export const pickupsAPI = {
+  list: (params) => api.get('/api/pickups', { params }),
+  get: (id) => api.get(`/api/pickups/${id}`),
+  create: (data) => api.post('/api/pickups', data),
+  update: (id, data) => api.patch(`/api/pickups/${id}`, data),
+  delete: (id) => api.delete(`/api/pickups/${id}`),
+  getStats: () => api.get('/api/pickups/stats'),
+  approve: (id, staffNotes) => api.post(`/api/pickups/${id}/approve`, null, { params: { staff_notes: staffNotes } }),
+  decline: (id, reason) => api.post(`/api/pickups/${id}/decline`, null, { params: { reason } }),
+  complete: (id) => api.post(`/api/pickups/${id}/complete`),
+};
+
+// SMS Conversations API
+export const smsAPI = {
+  list: (params) => api.get('/sms/conversations', { params }),
+  get: (id) => api.get(`/sms/conversations/${id}`),
+  delete: (id) => api.delete(`/sms/conversations/${id}`),
+  getStats: () => api.get('/sms/stats'),
+};
+
+// Uploads API
+export const uploadsAPI = {
+  uploadImages: (files) => {
+    const formData = new FormData();
+    files.forEach(file => formData.append('files', file));
+    return api.post('/api/uploads/images', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  deleteImage: (filename) => api.delete(`/api/uploads/images/${filename}`),
 };
 
 export default api;

@@ -57,6 +57,14 @@
   margin-bottom: 14px;
 }
 
+.sidebar-section {
+  margin-bottom: 24px;
+}
+
+.sidebar-section:last-child {
+  margin-bottom: 0;
+}
+
 .unscheduled-list {
   display: flex;
   flex-direction: column;
@@ -81,6 +89,14 @@
 .unscheduled-item:active {
   cursor: grabbing;
   opacity: 0.7;
+}
+
+.unscheduled-item.delivery-item {
+  border-left: 3px solid #ef4444;
+}
+
+.unscheduled-item.pickup-item {
+  border-left: 3px solid #8b5cf6;
 }
 
 .unscheduled-title {

@@ -262,24 +262,41 @@
 }
 
 @media (max-width: 768px) {
+  .dashboard {
+    max-width: 100%;
+  }
+
   .dashboard-header {
     flex-direction: column;
     align-items: stretch;
-    gap: 16px;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .dashboard-header h1 {
+    font-size: var(--font-size-lg);
   }
 
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .stat-card {
+    padding: 10px 12px;
   }
 
   .task-card {
     flex-direction: column;
     align-items: stretch;
-    gap: 16px;
+    gap: 12px;
+    padding: 12px;
+    border-radius: var(--radius-md);
   }
 
   .task-card-body {
-    gap: 16px;
+    gap: 12px;
   }
 
   .task-card-actions {
@@ -296,9 +313,21 @@
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     padding-bottom: 4px;
+    gap: 6px;
   }
 
   .filter-btn {
     white-space: nowrap;
+    padding: 6px 12px;
+    font-size: var(--font-size-xs);
+  }
+
+  .tasks-list {
+    gap: 10px;
+  }
+
+  .section-title {
+    margin-bottom: 12px;
+    margin-top: 16px;
   }
 }

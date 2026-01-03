@@ -9,6 +9,9 @@ import PickupDashboard from './pages/PickupDashboard';
 import Calendar from './pages/Calendar';
 import TaskDetail from './pages/TaskDetail';
 import CreateTask from './pages/CreateTask';
+import CreatePickup from './pages/CreatePickup';
+import PickupDetail from './pages/PickupDetail';
+import SMSRequests from './pages/SMSRequests';
 import './App.css';
 
 // Protected Route Component
@@ -17,8 +20,9 @@ const ProtectedRoute = ({ children, adminOnly = false }) => {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <div className="spinner"></div>
+      <div className="app-loading">
+        <div className="app-loading-spinner"></div>
+        <div className="app-loading-text">Loading</div>
       </div>
     );
   }
@@ -78,10 +82,34 @@ function AppRoutes() {
           } 
         />
         <Route 
+          path="pickups/new" 
+          element={
+            <ProtectedRoute adminOnly>
+              <CreatePickup />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="pickups/:id" 
+          element={
+            <ProtectedRoute adminOnly>
+              <PickupDetail />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
           path="calendar" 
           element={
             <ProtectedRoute adminOnly>
               <Calendar />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="sms" 
+          element={
+            <ProtectedRoute adminOnly>
+              <SMSRequests />
             </ProtectedRoute>
           } 
         />

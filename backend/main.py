@@ -1,18 +1,56 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from database import engine, Base
-from routers import auth_router, tasks_router, calendar_router, webhooks_router, schedule_router, items_router
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from database import engine, Base, SessionLocal
+from routers import auth_router, tasks_router, calendar_router, webhooks_router, schedule_router, items_router, pickups_router, sms_router, uploads_router
 from config import get_settings
+from models import User
+from auth import get_password_hash
+from users_config import USERS
+import os
 
 settings = get_settings()
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
+# Sync users from config file
+def sync_users():
+    """Sync users from users_config.py to database"""
+    db = SessionLocal()
+    try:
+        for user_data in USERS:
+            existing = db.query(User).filter(User.username == user_data["username"]).first()
+            if not existing:
+                # Create new user
+                user = User(
+                    username=user_data["username"],
+                    hashed_password=get_password_hash(user_data["password"]),
+                    role=user_data["role"],
+                    full_name=user_data.get("full_name", ""),
+                    is_active=1
+                )
+                db.add(user)
+                print(f"✓ Created user: {user_data['username']}")
+            else:
+                # Update existing user (in case password/role changed)
+                existing.hashed_password = get_password_hash(user_data["password"])
+                existing.role = user_data["role"]
+                existing.full_name = user_data.get("full_name", "")
+        db.commit()
+    except Exception as e:
+        print(f"Error syncing users: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
+sync_users()
+
 # Initialize FastAPI app
 app = FastAPI(
-    title="Delivery Management System",
-    description="Production-quality delivery management system with Shopify integration",
+    title="Consigned By Design API",
+    description="Delivery and pickup management for Consigned By Design",
     version="1.0.0"
 )
 
@@ -32,13 +70,16 @@ app.include_router(calendar_router.router)
 app.include_router(webhooks_router.router)
 app.include_router(schedule_router.router)
 app.include_router(items_router.router)
+app.include_router(pickups_router.router)
+app.include_router(sms_router.router)
+app.include_router(uploads_router.router)
 
 
 @app.get("/")
 def root():
     """Root endpoint"""
     return {
-        "name": "Delivery Management System API",
+        "name": "Consigned By Design API",
         "version": "1.0.0",
         "status": "operational"
     }
@@ -48,6 +89,25 @@ def root():
 def health_check():
     """Health check endpoint"""
     return {"status": "healthy"}
+
+
+# Serve frontend static files in production
+STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+if os.path.exists(STATIC_DIR):
+    app.mount("/assets", StaticFiles(directory=os.path.join(STATIC_DIR, "assets")), name="assets")
+    
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        """Serve frontend for all non-API routes"""
+        # Don't serve frontend for API routes
+        if full_path.startswith(("api/", "auth/", "sms/", "webhooks/", "schedule/")):
+            return {"error": "Not found"}
+        
+        file_path = os.path.join(STATIC_DIR, full_path)
+        if os.path.exists(file_path) and os.path.isfile(file_path):
+            return FileResponse(file_path)
+        # Return index.html for SPA routing
+        return FileResponse(os.path.join(STATIC_DIR, "index.html"))
 
 
 if __name__ == "__main__":

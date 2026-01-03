@@ -7,17 +7,18 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+      includeAssets: ['apple-touch-icon.png', 'favicon-32x32.png'],
       manifest: {
-        name: 'Delivery Management System',
-        short_name: 'Deliveries',
-        description: 'Professional delivery management system',
-        theme_color: '#667eea',
-        background_color: '#ffffff',
+        name: 'Consigned By Design',
+        short_name: 'CBD',
+        description: 'Delivery and pickup management for Consigned By Design',
+        theme_color: '#000000',
+        background_color: '#000000',
         display: 'standalone',
-        orientation: 'portrait',
+        orientation: 'portrait-primary',
         scope: '/',
         start_url: '/',
+        categories: ['business', 'productivity'],
         icons: [
           {
             src: 'pwa-192x192.png',
@@ -33,21 +34,71 @@ export default defineConfig({
             src: 'pwa-512x512.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'maskable'
+          }
+        ],
+        shortcuts: [
+          {
+            name: 'New Delivery',
+            short_name: 'New',
+            description: 'Create a new delivery',
+            url: '/tasks/new',
+            icons: [{ src: 'pwa-192x192.png', sizes: '192x192' }]
+          },
+          {
+            name: 'Calendar',
+            short_name: 'Calendar',
+            description: 'View calendar',
+            url: '/calendar',
+            icons: [{ src: 'pwa-192x192.png', sizes: '192x192' }]
           }
         ]
       },
       workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
         cleanupOutdatedCaches: true,
         clientsClaim: true,
-        skipWaiting: true
+        skipWaiting: true,
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'google-fonts-cache',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          {
+            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'gstatic-fonts-cache',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          }
+        ]
+      },
+      devOptions: {
+        enabled: true
       }
     })
   ],
   server: {
     port: 5173,
-    host: true,  // Listen on all addresses (0.0.0.0)
-    allowedHosts: ['.ngrok-free.dev', '.ngrok.io', 'localhost'],  // Allow ngrok hosts
+    host: true,
+    allowedHosts: ['.ngrok-free.dev', '.ngrok.io', 'localhost'],
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
@@ -64,10 +115,11 @@ export default defineConfig({
       '/schedule': {
         target: 'http://localhost:8000',
         changeOrigin: true
+      },
+      '/sms': {
+        target: 'http://localhost:8000',
+        changeOrigin: true
       }
     }
   }
 })
-
-
-

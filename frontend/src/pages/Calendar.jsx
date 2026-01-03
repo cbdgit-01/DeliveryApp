@@ -5,34 +5,34 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import listPlugin from '@fullcalendar/list';
 import interactionPlugin, { Draggable } from '@fullcalendar/interaction';
-import { calendarAPI, tasksAPI } from '../services/api';
+import { calendarAPI, tasksAPI, pickupsAPI } from '../services/api';
 import './Calendar.css';
 
 const Calendar = () => {
   const calendarRef = useRef(null);
   const navigate = useNavigate();
-  const [unscheduled, setUnscheduled] = useState([]);
+  const [unscheduledDeliveries, setUnscheduledDeliveries] = useState([]);
+  const [unscheduledPickups, setUnscheduledPickups] = useState([]);
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showEventModal, setShowEventModal] = useState(false);
-  const draggableInitialized = useRef(false);
-  const isSchedulingRef = useRef(false);
+  const deliveryDraggableRef = useRef(null);
+  const pickupDraggableRef = useRef(null);
 
   useEffect(() => {
-    fetchUnscheduledTasks();
+    fetchUnscheduledDeliveries();
+    fetchUnscheduledPickups();
     fetchCalendarEvents();
   }, []);
 
   const fetchCalendarEvents = async () => {
     try {
-      // Get a reasonable date range
       const start = new Date();
       start.setMonth(start.getMonth() - 1);
       const end = new Date();
       end.setMonth(end.getMonth() + 3);
       
       const response = await calendarAPI.getEvents(start, end);
-      // Ensure all IDs are strings for consistency
       const eventsWithStringIds = response.data.map(event => ({
         ...event,
         id: String(event.id)
@@ -43,17 +43,16 @@ const Calendar = () => {
     }
   };
 
-  // Initialize draggable for external events
+  // Initialize draggable for delivery events
   useEffect(() => {
-    const containerEl = document.getElementById('unscheduled-events');
+    const containerEl = document.getElementById('unscheduled-deliveries');
     if (!containerEl) return;
 
-    // Clean up old draggable if it exists
-    if (draggableInitialized.current) {
-      // Destroy is handled by creating new instance
+    if (deliveryDraggableRef.current) {
+      deliveryDraggableRef.current.destroy();
     }
 
-    const draggable = new Draggable(containerEl, {
+    deliveryDraggableRef.current = new Draggable(containerEl, {
       itemSelector: '.unscheduled-item',
       eventData: function(eventEl) {
         const data = JSON.parse(eventEl.getAttribute('data-event'));
@@ -67,20 +66,60 @@ const Calendar = () => {
         };
       }
     });
-    draggableInitialized.current = true;
 
     return () => {
-      draggable.destroy();
-      draggableInitialized.current = false;
+      if (deliveryDraggableRef.current) {
+        deliveryDraggableRef.current.destroy();
+      }
     };
-  }, [unscheduled]);
+  }, [unscheduledDeliveries]);
 
-  const fetchUnscheduledTasks = async () => {
+  // Initialize draggable for pickup events
+  useEffect(() => {
+    const containerEl = document.getElementById('unscheduled-pickups');
+    if (!containerEl) return;
+
+    if (pickupDraggableRef.current) {
+      pickupDraggableRef.current.destroy();
+    }
+
+    pickupDraggableRef.current = new Draggable(containerEl, {
+      itemSelector: '.unscheduled-item',
+      eventData: function(eventEl) {
+        const data = JSON.parse(eventEl.getAttribute('data-event'));
+        return {
+          id: String(data.id),
+          title: data.title,
+          duration: '01:00:00',
+          extendedProps: data.extendedProps,
+          backgroundColor: '#a78bfa',
+          borderColor: '#8b5cf6'
+        };
+      }
+    });
+
+    return () => {
+      if (pickupDraggableRef.current) {
+        pickupDraggableRef.current.destroy();
+      }
+    };
+  }, [unscheduledPickups]);
+
+  const fetchUnscheduledDeliveries = async () => {
     try {
       const response = await calendarAPI.getUnscheduled();
-      setUnscheduled(response.data);
+      setUnscheduledDeliveries(response.data);
     } catch (error) {
-      console.error('Error fetching unscheduled tasks:', error);
+      console.error('Error fetching unscheduled deliveries:', error);
+    }
+  };
+
+  const fetchUnscheduledPickups = async () => {
+    try {
+      const response = await calendarAPI.getUnscheduledPickups();
+      setUnscheduledPickups(response.data);
+    } catch (error) {
+      console.error('Error fetching unscheduled pickups:', error);
     }
   };
 
@@ -89,63 +128,6 @@ const Calendar = () => {
     setShowEventModal(true);
   };
 
-  const handleEventDrop = async (dropInfo) => {
-    const taskId = dropInfo.event.id;
-    const newStart = dropInfo.event.start;
-    const newEnd = dropInfo.event.end || new Date(newStart.getTime() + 3600000);
-
-    // Use local time strings
-    const startStr = toLocalISOString(newStart);
-    const endStr = toLocalISOString(newEnd);
-
-    try {
-      await tasksAPI.update(taskId, {
-        scheduled_start: startStr,
-        scheduled_end: endStr,
-      });
-      
-      // Update the state to reflect the new position
-      setCalendarEvents(prev => prev.map(event => 
-        String(event.id) === String(taskId) 
-          ? { ...event, start: startStr, end: endStr }
-          : event
-      ));
-    } catch (error) {
-      console.error('Error updating event:', error);
-      dropInfo.revert();
-      alert('Failed to update delivery time');
-    }
-  };
-
-  const handleEventResize = async (resizeInfo) => {
-    const taskId = resizeInfo.event.id;
-    const newStart = resizeInfo.event.start;
-    const newEnd = resizeInfo.event.end;
-
-    // Use local time strings
-    const startStr = toLocalISOString(newStart);
-    const endStr = toLocalISOString(newEnd);
-
-    try {
-      await tasksAPI.update(taskId, {
-        scheduled_start: startStr,
-        scheduled_end: endStr,
-      });
-      
-      // Update the state to reflect the new size
-      setCalendarEvents(prev => prev.map(event => 
-        String(event.id) === String(taskId) 
-          ? { ...event, start: startStr, end: endStr }
-          : event
-      ));
-    } catch (error) {
-      console.error('Error resizing event:', error);
-      resizeInfo.revert();
-      alert('Failed to update delivery time');
-    }
-  };
-
-  // Helper to format date as local ISO string (without timezone conversion)
   const toLocalISOString = (date) => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -156,46 +138,129 @@ const Calendar = () => {
     return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
   };
 
+  const handleEventDrop = async (dropInfo) => {
+    const eventId = dropInfo.event.id;
+    const newStart = dropInfo.event.start;
+    const newEnd = dropInfo.event.end || new Date(newStart.getTime() + 3600000);
+    const startStr = toLocalISOString(newStart);
+    const endStr = toLocalISOString(newEnd);
+
+    // Determine if this is a delivery or pickup
+    const isPickup = eventId.startsWith('pickup-');
+    const actualId = isPickup ? eventId.replace('pickup-', '') : eventId.replace('delivery-', '');
+
+    try {
+      if (isPickup) {
+        await pickupsAPI.update(actualId, {
+          scheduled_start: startStr,
+          scheduled_end: endStr,
+        });
+      } else {
+        await tasksAPI.update(actualId, {
+          scheduled_start: startStr,
+          scheduled_end: endStr,
+        });
+      }
+      
+      setCalendarEvents(prev => prev.map(event => 
+        String(event.id) === String(eventId) 
+          ? { ...event, start: startStr, end: endStr }
+          : event
+      ));
+    } catch (error) {
+      console.error('Error updating event:', error);
+      dropInfo.revert();
+      alert('Failed to update time');
+    }
+  };
+
+  const handleEventResize = async (resizeInfo) => {
+    const eventId = resizeInfo.event.id;
+    const newStart = resizeInfo.event.start;
+    const newEnd = resizeInfo.event.end;
+    const startStr = toLocalISOString(newStart);
+    const endStr = toLocalISOString(newEnd);
+
+    const isPickup = eventId.startsWith('pickup-');
+    const actualId = isPickup ? eventId.replace('pickup-', '') : eventId.replace('delivery-', '');
+
+    try {
+      if (isPickup) {
+        await pickupsAPI.update(actualId, {
+          scheduled_start: startStr,
+          scheduled_end: endStr,
+        });
+      } else {
+        await tasksAPI.update(actualId, {
+          scheduled_start: startStr,
+          scheduled_end: endStr,
+        });
+      }
+      
+      setCalendarEvents(prev => prev.map(event => 
+        String(event.id) === String(eventId) 
+          ? { ...event, start: startStr, end: endStr }
+          : event
+      ));
+    } catch (error) {
+      console.error('Error resizing event:', error);
+      resizeInfo.revert();
+      alert('Failed to update time');
+    }
+  };
+
   const handleEventReceive = async (eventInfo) => {
-    // When an unscheduled task is dropped onto the calendar
-    const taskId = eventInfo.event.id;
+    const eventId = eventInfo.event.id;
     const start = eventInfo.event.start;
     const end = eventInfo.event.end || new Date(start.getTime() + 3600000);
-
-    // Use local time strings to preserve the exact time the user selected
     const startStr = toLocalISOString(start);
     const endStr = toLocalISOString(end);
 
-    try {
-      // Update the backend first
-      await tasksAPI.update(taskId, {
-        scheduled_start: startStr,
-        scheduled_end: endStr,
-        status: 'scheduled',
-      });
+    const isPickup = eventId.startsWith('pickup-');
+    const actualId = isPickup ? eventId.replace('pickup-', '') : eventId.replace('delivery-', '');
 
-      // Remove the dropped event (we'll add it properly to state)
+    try {
+      if (isPickup) {
+        await pickupsAPI.update(actualId, {
+          scheduled_start: startStr,
+          scheduled_end: endStr,
+          status: 'scheduled',
+        });
+      } else {
+        await tasksAPI.update(actualId, {
+          scheduled_start: startStr,
+          scheduled_end: endStr,
+          status: 'scheduled',
+        });
+      }
+
       eventInfo.event.remove();
 
-      // Add to calendar events state with proper formatting
       const newEvent = {
-        id: String(taskId),
+        id: String(eventId),
         title: eventInfo.event.title,
         start: startStr,
         end: endStr,
-        backgroundColor: '#f97373',
-        borderColor: '#ef4444',
+        backgroundColor: isPickup ? '#a78bfa' : '#f97373',
+        borderColor: isPickup ? '#8b5cf6' : '#ef4444',
         extendedProps: eventInfo.event.extendedProps
       };
       setCalendarEvents(prev => [...prev, newEvent]);
 
-      // Refresh unscheduled tasks to remove from sidebar
-      await fetchUnscheduledTasks();
+      if (isPickup) {
+        await fetchUnscheduledPickups();
+      } else {
+        await fetchUnscheduledDeliveries();
+      }
     } catch (error) {
-      console.error('Error scheduling task:', error);
+      console.error('Error scheduling:', error);
       eventInfo.event.remove();
-      alert('Failed to schedule delivery');
-      await fetchUnscheduledTasks();
+      alert('Failed to schedule');
+      if (isPickup) {
+        await fetchUnscheduledPickups();
+      } else {
+        await fetchUnscheduledDeliveries();
+      }
     }
   };
 
@@ -204,38 +269,55 @@ const Calendar = () => {
     setSelectedEvent(null);
   };
 
-  const goToTaskDetail = () => {
+  const goToDetail = () => {
     if (selectedEvent) {
-      navigate(`/tasks/${selectedEvent.id}`);
+      const isPickup = selectedEvent.extendedProps?.type === 'pickup';
+      if (isPickup) {
+        navigate(`/pickups/${selectedEvent.extendedProps.pickup_id}`);
+      } else {
+        const taskId = selectedEvent.extendedProps?.task_id || selectedEvent.id.replace('delivery-', '');
+        navigate(`/tasks/${taskId}`);
+      }
     }
   };
 
   const handleUnschedule = async () => {
     if (!selectedEvent) return;
     
-    if (!confirm('Remove this delivery from the schedule? It will go back to pending status.')) {
-      return;
-    }
+    const isPickup = selectedEvent.extendedProps?.type === 'pickup';
+    const confirmMsg = isPickup 
+      ? 'Remove this pickup from the schedule? It will go back to approved status.'
+      : 'Remove this delivery from the schedule? It will go back to pending status.';
+    
+    if (!confirm(confirmMsg)) return;
 
     const eventId = selectedEvent.id;
+    const actualId = isPickup 
+      ? selectedEvent.extendedProps.pickup_id 
+      : (selectedEvent.extendedProps?.task_id || eventId.replace('delivery-', ''));
 
     try {
-      await tasksAPI.update(eventId, {
-        scheduled_start: null,
-        scheduled_end: null,
-        status: 'pending',
-      });
+      if (isPickup) {
+        await pickupsAPI.update(actualId, {
+          scheduled_start: null,
+          scheduled_end: null,
+          status: 'approved',
+        });
+        await fetchUnscheduledPickups();
+      } else {
+        await tasksAPI.update(actualId, {
+          scheduled_start: null,
+          scheduled_end: null,
+          status: 'pending',
+        });
+        await fetchUnscheduledDeliveries();
+      }
 
-      // Remove from calendar events state
       setCalendarEvents(prev => prev.filter(event => String(event.id) !== String(eventId)));
-      
-      // Refresh unscheduled list to show the item again
-      await fetchUnscheduledTasks();
-      
       closeModal();
     } catch (error) {
-      console.error('Error unscheduling task:', error);
-      alert('Failed to unschedule delivery');
+      console.error('Error unscheduling:', error);
+      alert('Failed to unschedule');
     }
   };
 
@@ -260,7 +342,7 @@ const Calendar = () => {
   return (
     <div className="calendar-page">
       <div className="calendar-header">
-        <h1>Delivery Calendar</h1>
+        <h1>Calendar</h1>
         <div className="calendar-nav">
           <button className="btn btn-secondary" onClick={handlePrevClick}>
             ← Prev
@@ -276,31 +358,63 @@ const Calendar = () => {
 
       <div className="calendar-container">
         <div className="unscheduled-sidebar">
-          <h3>Unscheduled Deliveries</h3>
-          <p className="sidebar-hint">Drag items onto the calendar to schedule</p>
-          {unscheduled.length > 0 ? (
-            <div id="unscheduled-events" className="unscheduled-list">
-              {unscheduled.map((task) => (
-                <div
-                  key={task.id}
-                  className="unscheduled-item fc-event"
-                  data-event={JSON.stringify({
-                    id: task.id,
-                    title: task.title,
-                    duration: task.duration,
-                    extendedProps: task.extendedProps,
-                  })}
-                >
-                  <div className="unscheduled-title">{task.title}</div>
-                  <div className="unscheduled-sku">SKU: {task.extendedProps.sku}</div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="empty-unscheduled">
-              <p>All deliveries scheduled ✓</p>
-            </div>
-          )}
+          {/* Unscheduled Deliveries */}
+          <div className="sidebar-section">
+            <h3>Unscheduled Deliveries</h3>
+            <p className="sidebar-hint">Drag onto calendar to schedule</p>
+            {unscheduledDeliveries.length > 0 ? (
+              <div id="unscheduled-deliveries" className="unscheduled-list">
+                {unscheduledDeliveries.map((task) => (
+                  <div
+                    key={task.id}
+                    className="unscheduled-item fc-event delivery-item"
+                    data-event={JSON.stringify({
+                      id: task.id,
+                      title: task.title,
+                      duration: task.duration,
+                      extendedProps: task.extendedProps,
+                    })}
+                  >
+                    <div className="unscheduled-title">{task.title}</div>
+                    <div className="unscheduled-sku">SKU: {task.extendedProps.sku}</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="empty-unscheduled">
+                <p>All deliveries scheduled</p>
+              </div>
+            )}
+          </div>
+
+          {/* Unscheduled Pickups */}
+          <div className="sidebar-section">
+            <h3>Unscheduled Pickups</h3>
+            <p className="sidebar-hint">Drag onto calendar to schedule</p>
+            {unscheduledPickups.length > 0 ? (
+              <div id="unscheduled-pickups" className="unscheduled-list">
+                {unscheduledPickups.map((pickup) => (
+                  <div
+                    key={pickup.id}
+                    className="unscheduled-item fc-event pickup-item"
+                    data-event={JSON.stringify({
+                      id: pickup.id,
+                      title: pickup.title,
+                      duration: pickup.duration,
+                      extendedProps: pickup.extendedProps,
+                    })}
+                  >
+                    <div className="unscheduled-title">{pickup.title}</div>
+                    <div className="unscheduled-sku">{pickup.extendedProps.item_count} item(s)</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="empty-unscheduled">
+                <p>No approved pickups to schedule</p>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="calendar-wrapper">
@@ -363,7 +477,6 @@ const Calendar = () => {
               </button>
             </div>
             <div className="modal-body">
-              {/* Product Image */}
               {selectedEvent.extendedProps.image_url && (
                 <div className="modal-image">
                   <img 
@@ -374,6 +487,10 @@ const Calendar = () => {
                 </div>
               )}
               
+              <div className="modal-info">
+                <label>Type</label>
+                <div>{selectedEvent.extendedProps.type === 'pickup' ? 'Pickup' : 'Delivery'}</div>
+              </div>
               <div className="modal-info">
                 <label>Customer</label>
                 <div>{selectedEvent.extendedProps.customer_name}</div>
@@ -386,14 +503,30 @@ const Calendar = () => {
                   </a>
                 </div>
               </div>
-              <div className="modal-info">
-                <label>Item</label>
-                <div>{selectedEvent.extendedProps.item_title}</div>
-              </div>
-              <div className="modal-info">
-                <label>SKU</label>
-                <div>{selectedEvent.extendedProps.sku}</div>
-              </div>
+              {selectedEvent.extendedProps.type === 'delivery' && (
+                <>
+                  <div className="modal-info">
+                    <label>Item</label>
+                    <div>{selectedEvent.extendedProps.item_title}</div>
+                  </div>
+                  <div className="modal-info">
+                    <label>SKU</label>
+                    <div>{selectedEvent.extendedProps.sku}</div>
+                  </div>
+                </>
+              )}
+              {selectedEvent.extendedProps.type === 'pickup' && (
+                <>
+                  <div className="modal-info">
+                    <label>Items</label>
+                    <div>{selectedEvent.extendedProps.item_count} item(s)</div>
+                  </div>
+                  <div className="modal-info">
+                    <label>Description</label>
+                    <div>{selectedEvent.extendedProps.item_description}</div>
+                  </div>
+                </>
+              )}
               <div className="modal-info">
                 <label>Address</label>
                 <div>{selectedEvent.extendedProps.address}</div>
@@ -425,7 +558,7 @@ const Calendar = () => {
               >
                 Remove from Schedule
               </button>
-              <button className="btn btn-primary" onClick={goToTaskDetail}>
+              <button className="btn btn-primary" onClick={goToDetail}>
                 View Full Details
               </button>
             </div>
@@ -437,4 +570,3 @@ const Calendar = () => {
 };
 
 export default Calendar;
-

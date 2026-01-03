@@ -53,8 +53,8 @@ const Login = () => {
       </button>
       <div className="login-box">
         <div className="login-header">
-          <div className="login-icon">📦</div>
-          <h1>Delivery Management</h1>
+          <img src="/CBD.png" alt="Consigned By Design" className="login-logo" />
+          <h1>Consigned By Design</h1>
           <p>Sign in to continue</p>
         </div>
 
@@ -64,17 +64,18 @@ const Login = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} autoComplete="off">
           <div className="form-group">
             <label htmlFor="username">Username</label>
             <input
               id="username"
+              name="username"
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Enter your username"
               required
-              autoComplete="username"
+              autoComplete="off"
             />
           </div>
 
@@ -82,12 +83,13 @@ const Login = () => {
             <label htmlFor="password">Password</label>
             <input
               id="password"
+              name="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
               required
-              autoComplete="current-password"
+              autoComplete="new-password"
             />
           </div>
 
@@ -96,14 +98,6 @@ const Login = () => {
           </button>
         </form>
 
-        <div className="login-footer">
-          <p>Default credentials for testing:</p>
-          <ul>
-            <li><strong>Admin:</strong> admin / admin123</li>
-            <li><strong>Staff:</strong> staff / staff123</li>
-            <li><strong>Scheduler:</strong> scheduler / scheduler123</li>
-          </ul>
-        </div>
       </div>
     </div>
   );

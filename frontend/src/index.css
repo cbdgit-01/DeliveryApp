@@ -4,19 +4,31 @@
   box-sizing: border-box;
 }
 
+/* Base background - prevents white flash */
+html, body {
+  background-color: #111111;
+  min-height: 100%;
+  min-height: 100dvh;
+}
+
+[data-theme="light"] body,
+[data-theme="light"] html {
+  background-color: #f8fafc;
+}
+
 /* ===== DARK THEME (Default) ===== */
 :root,
 [data-theme="dark"] {
-  /* Background Colors - Darker, more minimal */
-  --bg-base: #030616;
-  --bg-main: #050818;
-  --bg-card: #0f1724;
-  --bg-card-hover: rgba(15, 23, 42, 0.9);
-  --bg-input: rgba(15, 23, 42, 0.7);
+  /* Background Colors - Neutral dark (no purple/blue tint) */
+  --bg-base: #111111;
+  --bg-main: #161616;
+  --bg-card: #1e1e1e;
+  --bg-card-hover: #252525;
+  --bg-input: #1a1a1a;
   
-  /* Border Colors - Subtle slate */
-  --border-default: #1e293b;
-  --border-subtle: rgba(30, 41, 59, 0.5);
+  /* Border Colors - Neutral gray */
+  --border-default: #2a2a2a;
+  --border-subtle: #222222;
   
   /* Text Colors - Muted slate */
   --text-primary: #f1f5f9;

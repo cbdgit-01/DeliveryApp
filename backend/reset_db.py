@@ -55,17 +55,6 @@ def reset_database():
         )
         db.add(admin)
         
-        # Create scheduler user
-        scheduler = User(
-            username="scheduler",
-            email="scheduler@example.com",
-            hashed_password=pwd_context.hash("scheduler123"),
-            full_name="Delivery Scheduler",
-            role="scheduler",
-            is_active=1
-        )
-        db.add(scheduler)
-        
         # Create staff user
         staff = User(
             username="staff",
@@ -86,13 +75,14 @@ def reset_database():
         print("\n  Admin:")
         print("    Username: admin")
         print("    Password: admin123")
-        print("\n  Scheduler:")
-        print("    Username: scheduler")
-        print("    Password: scheduler123")
         print("\n  Staff:")
         print("    Username: staff")
         print("    Password: staff123")
         print("\n" + "=" * 50)
+        print("\nTo manage users later, run:")
+        print("  python manage_users.py list")
+        print("  python manage_users.py create <username> <password> <role>")
+        print("  python manage_users.py reset-password <username> <new_password>")
         
     except Exception as e:
         print(f"\n❌ Error: {e}")
