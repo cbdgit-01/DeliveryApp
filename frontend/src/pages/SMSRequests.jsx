@@ -85,10 +85,10 @@ const SMSRequests = () => {
     return <span className={config.className}>{config.label}</span>;
   };
 
-  const getTypeIcon = (type) => {
-    if (type === 'delivery') return '🚚';
-    if (type === 'pickup') return '📥';
-    return '💬';
+  const getTypeLabel = (type) => {
+    if (type === 'delivery') return 'Delivery';
+    if (type === 'pickup') return 'Pickup';
+    return 'SMS';
   };
 
   const filteredConversations = conversations.filter(conv => {
@@ -132,27 +132,18 @@ const SMSRequests = () => {
       {/* Stats Grid */}
       <div className="stats-grid">
         <div className="stat-card">
-          <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #f97373 0%, #ef4444 100%)' }}>
-            💬
-          </div>
           <div className="stat-content">
             <div className="stat-value">{stats.in_progress}</div>
             <div className="stat-label">In Progress</div>
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #4ade80 0%, #22c55e 100%)' }}>
-            ✓
-          </div>
           <div className="stat-content">
             <div className="stat-value">{stats.completed}</div>
             <div className="stat-label">Completed</div>
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon" style={{ background: 'linear-gradient(135deg, #64748b 0%, #475569 100%)' }}>
-            📊
-          </div>
           <div className="stat-content">
             <div className="stat-value">{stats.total}</div>
             <div className="stat-label">Total</div>
@@ -200,7 +191,7 @@ const SMSRequests = () => {
       </div>
 
       {/* Conversation List */}
-      <div className="tasks-list">
+      <div className="tasks-list" style={{ marginTop: '24px' }}>
         {filteredConversations.length === 0 ? (
           <div className="empty-state">
             <h3>No SMS conversations found</h3>
@@ -220,10 +211,20 @@ const SMSRequests = () => {
             >
               <div className="task-card-header">
                 <div className="task-title">
-                  <span style={{ marginRight: '8px' }}>{getTypeIcon(conv.request_type)}</span>
                   {conv.customer_name || formatPhone(conv.phone_number)}
                 </div>
-                {getStatusBadge(conv.status)}
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  {conv.request_type && (
+                    <span className="status-badge" style={{ 
+                      background: 'var(--bg-card-hover)', 
+                      color: 'var(--text-muted)',
+                      border: '1px solid var(--border-default)'
+                    }}>
+                      {getTypeLabel(conv.request_type)}
+                    </span>
+                  )}
+                  {getStatusBadge(conv.status)}
+                </div>
               </div>
 
               <div className="task-card-details">
@@ -231,14 +232,6 @@ const SMSRequests = () => {
                   <span className="detail-label">Phone</span>
                   <span className="detail-value">{formatPhone(conv.phone_number)}</span>
                 </div>
-                {conv.request_type && (
-                  <div className="task-detail">
-                    <span className="detail-label">Type</span>
-                    <span className="detail-value" style={{ textTransform: 'capitalize' }}>
-                      {conv.request_type}
-                    </span>
-                  </div>
-                )}
                 {conv.city && (
                   <div className="task-detail">
                     <span className="detail-label">Location</span>
