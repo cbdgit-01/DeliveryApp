@@ -211,7 +211,7 @@ const CreateTask = () => {
           <button type="button" onClick={handleReset} className="back-link">
             ← Back to Scan
           </button>
-          /* Step 2: Item Found - Show Details & Customer Form */
+          {/* Step 2: Item Found - Show Details & Customer Form */}
           <form onSubmit={handleSubmit} className="delivery-form">
             {/* Item Preview */}
             <div className="item-preview-card">
