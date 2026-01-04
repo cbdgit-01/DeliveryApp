@@ -16,11 +16,14 @@ const CreateTask = () => {
   const [itemFound, setItemFound] = useState(false);
 
   // Block keyboard shortcuts at document level to prevent scanner interference
-  // Scanners sometimes send Ctrl+Shift+B which opens Firefox Library
+  // POSX scanners send Ctrl+J which opens Downloads in Chrome/Firefox
   useEffect(() => {
     const blockShortcuts = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey) {
-        if (['b', 'B', 'o', 'O', 'h', 'H', 'p', 'P'].includes(e.key)) {
+      // Block Ctrl+J (Downloads), Ctrl+Shift+B (Library), etc.
+      if (e.ctrlKey || e.metaKey) {
+        const key = e.key.toLowerCase();
+        // j = downloads, b = bookmarks, o = open, h = history, d = bookmark
+        if (['j', 'b', 'o', 'h', 'd', 'p', 's'].includes(key)) {
           e.preventDefault();
           e.stopPropagation();
           return false;
@@ -28,8 +31,13 @@ const CreateTask = () => {
       }
     };
     
+    // Use capture phase to intercept before browser handles it
     document.addEventListener('keydown', blockShortcuts, true);
-    return () => document.removeEventListener('keydown', blockShortcuts, true);
+    window.addEventListener('keydown', blockShortcuts, true);
+    return () => {
+      document.removeEventListener('keydown', blockShortcuts, true);
+      window.removeEventListener('keydown', blockShortcuts, true);
+    };
   }, []);
   
   const [formData, setFormData] = useState({
