@@ -3,29 +3,40 @@ import './UpdatePrompt.css';
 
 const UpdatePrompt = () => {
   const [showPrompt, setShowPrompt] = useState(false);
+  const [currentVersion, setCurrentVersion] = useState(null);
 
   const checkForUpdates = useCallback(async () => {
-    if (!('serviceWorker' in navigator)) return;
-
     try {
-      const registration = await navigator.serviceWorker.getRegistration();
-      if (registration) {
-        // Force check for updates
-        await registration.update();
+      // Fetch version.json with cache busting
+      const response = await fetch(`/version.json?t=${Date.now()}`, {
+        cache: 'no-store'
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const serverVersion = data.version;
         
-        // Check if there's a waiting worker
-        if (registration.waiting) {
+        // Get stored version from localStorage
+        const storedVersion = localStorage.getItem('app_version');
+        
+        if (!storedVersion) {
+          // First visit - store the version
+          localStorage.setItem('app_version', serverVersion);
+          setCurrentVersion(serverVersion);
+        } else if (storedVersion !== serverVersion) {
+          // Version mismatch - update available!
+          setCurrentVersion(serverVersion);
           setShowPrompt(true);
         }
       }
     } catch (error) {
-      console.log('Update check error:', error);
+      console.log('Version check failed:', error);
     }
   }, []);
 
   useEffect(() => {
-    // Initial check
-    const timer = setTimeout(checkForUpdates, 3000);
+    // Check immediately after a short delay
+    const initialCheck = setTimeout(checkForUpdates, 2000);
 
     // Check when app becomes visible (user returns to app)
     const handleVisibility = () => {
@@ -35,51 +46,31 @@ const UpdatePrompt = () => {
     };
     document.addEventListener('visibilitychange', handleVisibility);
 
-    // Check periodically (every 2 minutes)
-    const interval = setInterval(checkForUpdates, 2 * 60 * 1000);
-
-    // Listen for service worker updates
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.ready.then((registration) => {
-        // Listen for new service worker installing
-        registration.addEventListener('updatefound', () => {
-          const newWorker = registration.installing;
-          if (newWorker) {
-            newWorker.addEventListener('statechange', () => {
-              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                setShowPrompt(true);
-              }
-            });
-          }
-        });
-      });
-
-      // Reload when new service worker takes control
-      let refreshing = false;
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (!refreshing) {
-          refreshing = true;
-          window.location.reload();
-        }
-      });
-    }
+    // Check every minute
+    const interval = setInterval(checkForUpdates, 60 * 1000);
 
     return () => {
-      clearTimeout(timer);
+      clearTimeout(initialCheck);
       clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [checkForUpdates]);
 
-  const handleUpdate = async () => {
-    if ('serviceWorker' in navigator) {
-      const registration = await navigator.serviceWorker.getRegistration();
-      if (registration?.waiting) {
-        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-      }
+  const handleRefresh = () => {
+    // Update stored version before refresh
+    if (currentVersion) {
+      localStorage.setItem('app_version', currentVersion);
     }
-    // Fallback - just reload
-    setTimeout(() => window.location.reload(), 100);
+    
+    // Clear all caches if possible
+    if ('caches' in window) {
+      caches.keys().then(names => {
+        names.forEach(name => caches.delete(name));
+      });
+    }
+    
+    // Hard refresh
+    window.location.reload(true);
   };
 
   const handleDismiss = () => {
@@ -92,8 +83,8 @@ const UpdatePrompt = () => {
     <div className="update-prompt">
       <div className="update-prompt-content">
         <span className="update-icon">↻</span>
-        <span className="update-text">Update available</span>
-        <button onClick={handleUpdate} className="update-btn">
+        <span className="update-text">New version available</span>
+        <button onClick={handleRefresh} className="update-btn">
           Refresh
         </button>
         <button onClick={handleDismiss} className="dismiss-btn">
