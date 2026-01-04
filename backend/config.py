@@ -4,14 +4,11 @@ import os
 
 
 class Settings(BaseSettings):
-    # Database - check multiple possible env var names
-    database_url: str = os.environ.get(
-        "DATABASE_URL",
-        os.environ.get(
-            "DATABASE_PRIVATE_URL",
-            "sqlite:///./delivery_app.db"
-        )
-    )
+    # Database - Check env var directly to avoid pydantic issues
+    # Railway provides DATABASE_URL for PostgreSQL
+    @property
+    def database_url(self) -> str:
+        return os.environ.get("DATABASE_URL", "sqlite:///./delivery_app.db")
     
     # JWT
     jwt_secret: str

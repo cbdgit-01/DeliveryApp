@@ -1,3 +1,20 @@
+import os
+
+# DEBUG: Print DATABASE_URL from environment BEFORE any imports
+print("=" * 50)
+print("DATABASE DEBUG INFO")
+print("=" * 50)
+raw_db_url = os.environ.get("DATABASE_URL", "NOT SET")
+if raw_db_url != "NOT SET":
+    # Mask the password for security
+    if "@" in raw_db_url:
+        print(f"DATABASE_URL: postgresql://***@{raw_db_url.split('@')[1][:30]}...")
+    else:
+        print(f"DATABASE_URL: {raw_db_url[:50]}...")
+else:
+    print("DATABASE_URL: NOT SET - Will use SQLite default")
+print("=" * 50)
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -8,18 +25,12 @@ from config import get_settings
 from models import User
 from auth import get_password_hash
 from users_config import USERS
-import os
 
 settings = get_settings()
 
-# Print database info for debugging
+# Print what settings ended up using
 db_type = "PostgreSQL" if "postgresql" in settings.database_url else "SQLite"
-print(f"🗄️  Database: {db_type}")
-if "postgresql" in settings.database_url:
-    # Don't print full URL (contains password), just confirm it's postgres
-    print(f"   Connected to PostgreSQL database")
-else:
-    print(f"   Using local SQLite: {settings.database_url}")
+print(f"🗄️  Using Database: {db_type}")
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
