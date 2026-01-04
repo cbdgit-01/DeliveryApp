@@ -128,7 +128,7 @@ const Dashboard = () => {
             Manage deliveries, schedule routes, track payments.
           </p>
         </div>
-        <Link to="/tasks/new" className="btn btn-primary">
+        <Link to="/deliveries/new" className="btn btn-primary">
           + New Delivery
         </Link>
       </div>

@@ -9,6 +9,7 @@ import PickupDashboard from './pages/PickupDashboard';
 import Calendar from './pages/Calendar';
 import TaskDetail from './pages/TaskDetail';
 import CreateTask from './pages/CreateTask';
+import CreateDeliveryManual from './pages/CreateDeliveryManual';
 import CreatePickup from './pages/CreatePickup';
 import PickupDetail from './pages/PickupDetail';
 import SMSRequests from './pages/SMSRequests';
@@ -122,8 +123,16 @@ function AppRoutes() {
             </ProtectedRoute>
           } 
         />
+        <Route 
+          path="deliveries/new" 
+          element={
+            <ProtectedRoute adminOnly>
+              <CreateDeliveryManual />
+            </ProtectedRoute>
+          } 
+        />
         
-        {/* Accessible to all authenticated users */}
+        {/* Staff can scan items to create deliveries */}
         <Route path="tasks/new" element={<CreateTask />} />
       </Route>
     </Routes>
