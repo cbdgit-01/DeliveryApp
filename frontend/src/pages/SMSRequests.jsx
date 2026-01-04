@@ -152,7 +152,16 @@ const SMSRequests = () => {
       </div>
 
       {/* Controls */}
-      <div className="controls-bar">
+      <div className="dashboard-controls">
+        <div className="search-box">
+          <input
+            type="text"
+            placeholder="Search by name or phone..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+
         <div className="filter-buttons">
           <button
             className={`filter-btn ${filter === 'all' ? 'active' : ''}`}
@@ -179,19 +188,10 @@ const SMSRequests = () => {
             Cancelled
           </button>
         </div>
-
-        <div className="search-box">
-          <input
-            type="text"
-            placeholder="Search by name or phone..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
       </div>
 
       {/* Conversation List */}
-      <div className="tasks-list" style={{ marginTop: '24px' }}>
+      <div className="tasks-list">
         {filteredConversations.length === 0 ? (
           <div className="empty-state">
             <h3>No SMS conversations found</h3>

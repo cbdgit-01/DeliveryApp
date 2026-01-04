@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'prompt',
+      registerType: 'autoUpdate',
       includeAssets: ['apple-touch-icon.png', 'favicon-32x32.png'],
       manifest: {
         name: 'Consigned By Design',
