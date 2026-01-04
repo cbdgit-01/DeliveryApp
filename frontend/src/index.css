@@ -207,6 +207,16 @@ code {
   border-color: var(--status-pending);
 }
 
+.btn-danger {
+  background: var(--status-cancelled);
+  color: var(--text-inverse);
+  border-color: var(--status-cancelled);
+}
+
+.btn-danger:hover {
+  opacity: 0.9;
+}
+
 .btn-secondary {
   background: var(--bg-card);
   color: var(--text-muted);

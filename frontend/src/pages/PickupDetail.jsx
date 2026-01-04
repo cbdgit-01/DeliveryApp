@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { pickupsAPI } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import './TaskDetail.css'; // Reuse TaskDetail styles
 
 const PickupDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [pickup, setPickup] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -71,7 +73,8 @@ const PickupDetail = () => {
   };
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this pickup request? This cannot be undone.')) return;
+    if (!confirm('Permanently delete this pickup from the database? This action cannot be undone.')) return;
+    if (!confirm('Are you absolutely sure? This will remove all data for this pickup.')) return;
     setUpdating(true);
     try {
       await pickupsAPI.delete(id);
@@ -312,17 +315,19 @@ const PickupDetail = () => {
           </div>
         )}
 
-        {/* Delete */}
-        <div className="card">
-          <h2>Danger Zone</h2>
-          <button
-            className="btn btn-danger btn-full"
-            onClick={handleDelete}
-            disabled={updating}
-          >
-            🗑️ Delete Pickup Request
-          </button>
-        </div>
+        {/* Delete - Admin only */}
+        {user?.role === 'admin' && (
+          <div className="card">
+            <h2>Danger Zone</h2>
+            <button
+              className="btn btn-danger btn-full"
+              onClick={handleDelete}
+              disabled={updating}
+            >
+              Delete Permanently
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

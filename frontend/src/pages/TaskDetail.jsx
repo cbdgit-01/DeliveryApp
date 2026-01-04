@@ -153,6 +153,22 @@ const TaskDetail = () => {
     }
   };
 
+  const handleDeleteTask = async () => {
+    if (!confirm('Permanently delete this delivery from the database? This action cannot be undone.')) return;
+    if (!confirm('Are you absolutely sure? This will remove all data for this delivery.')) return;
+
+    setUpdating(true);
+    try {
+      await tasksAPI.delete(id);
+      navigate('/');
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      alert('Failed to delete task');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const handleUnschedule = async () => {
     if (!confirm('Remove from schedule? This will set the delivery back to pending status.')) return;
 
@@ -487,6 +503,17 @@ const TaskDetail = () => {
                     disabled={updating}
                   >
                     Cancel Delivery
+                  </button>
+                )}
+                {/* Admin-only delete button */}
+                {user?.role === 'admin' && (
+                  <button
+                    className="btn btn-danger btn-full"
+                    onClick={handleDeleteTask}
+                    disabled={updating}
+                    style={{ marginTop: '16px' }}
+                  >
+                    Delete Permanently
                   </button>
                 )}
               </div>
