@@ -84,57 +84,68 @@ async def lookup_shopify_product(sku: str):
             }
             """
             
-            # Search with a combined query for speed (OR logic in single request)
-            # This is much faster than sequential searches
-            combined_query = f"sku:{sku} OR barcode:{sku} OR {sku}"
+            # Run multiple search strategies in PARALLEL for speed
+            import asyncio
             
-            graphql_response = await client.post(
-                graphql_url,
-                headers=headers,
-                json={"query": graphql_query, "variables": {"query": combined_query}}
-            )
+            search_queries = [
+                f"sku:{sku}",      # Direct SKU match (e.g., "8097-16")
+                sku,               # General search (finds item ID in product title/fields)
+            ]
             
-            if graphql_response.status_code == 200:
-                gql_data = graphql_response.json()
-                products = gql_data.get('data', {}).get('products', {}).get('edges', [])
-                
-                for product_edge in products:
-                    product = product_edge.get('node', {})
-                    variants = product.get('variants', {}).get('edges', [])
+            async def do_search(query):
+                resp = await client.post(
+                    graphql_url,
+                    headers=headers,
+                    json={"query": graphql_query, "variables": {"query": query}}
+                )
+                return resp
+            
+            # Run all searches in parallel
+            responses = await asyncio.gather(*[do_search(q) for q in search_queries])
+            
+            # Check results from all searches
+            for graphql_response in responses:
+                if graphql_response.status_code == 200:
+                    gql_data = graphql_response.json()
+                    products = gql_data.get('data', {}).get('products', {}).get('edges', [])
                     
-                    for variant_edge in variants:
-                        variant = variant_edge.get('node', {})
-                        variant_sku = variant.get('sku', '')
-                        variant_barcode = variant.get('barcode', '')
+                    for product_edge in products:
+                        product = product_edge.get('node', {})
+                        variants = product.get('variants', {}).get('edges', [])
                         
-                        # Match by SKU, barcode, or if barcode contains the item ID
-                        if (variant_sku == sku or 
-                            variant_barcode == sku or 
-                            sku in str(variant_barcode) or
-                            sku in str(variant_sku)):
-                            # Get all images
-                            images = []
-                            if product.get('featuredImage'):
-                                images.append(product['featuredImage']['url'])
-                            for img_edge in product.get('images', {}).get('edges', []):
-                                img_url = img_edge.get('node', {}).get('url')
-                                if img_url and img_url not in images:
-                                    images.append(img_url)
+                        for variant_edge in variants:
+                            variant = variant_edge.get('node', {})
+                            variant_sku = variant.get('sku', '')
+                            variant_barcode = variant.get('barcode', '')
                             
-                            return {
-                                "sku": variant_sku or sku,
-                                "liberty_item_id": variant_barcode or sku,
-                                "title": product.get('title', ''),
-                                "description": product.get('description', ''),
-                                "image_url": images[0] if images else None,
-                                "images": images,
-                                "price": variant.get('price'),
-                                "inventory_quantity": variant.get('inventoryQuantity'),
-                                "shopify_product_id": product.get('id', '').split('/')[-1],
-                                "shopify_variant_id": variant.get('id', '').split('/')[-1]
-                            }
+                            # Match by SKU, barcode, or if item ID is in SKU/barcode
+                            if (variant_sku == sku or 
+                                variant_barcode == sku or 
+                                sku in str(variant_barcode) or
+                                sku in str(variant_sku)):
+                                # Get all images
+                                images = []
+                                if product.get('featuredImage'):
+                                    images.append(product['featuredImage']['url'])
+                                for img_edge in product.get('images', {}).get('edges', []):
+                                    img_url = img_edge.get('node', {}).get('url')
+                                    if img_url and img_url not in images:
+                                        images.append(img_url)
+                                
+                                return {
+                                    "sku": variant_sku or sku,
+                                    "liberty_item_id": variant_barcode or sku,
+                                    "title": product.get('title', ''),
+                                    "description": product.get('description', ''),
+                                    "image_url": images[0] if images else None,
+                                    "images": images,
+                                    "price": variant.get('price'),
+                                    "inventory_quantity": variant.get('inventoryQuantity'),
+                                    "shopify_product_id": product.get('id', '').split('/')[-1],
+                                    "shopify_variant_id": variant.get('id', '').split('/')[-1]
+                                }
             
-            # Not found via GraphQL - return None immediately (no slow REST fallback)
+            # Not found - return None immediately (no slow REST fallback)
             return None
                 
     except Exception as e:
