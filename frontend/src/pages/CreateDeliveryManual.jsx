@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { tasksAPI } from '../services/api';
+import { tasksAPI, uploadsAPI } from '../services/api';
 import './CreateTask.css';
 
 const CreateDeliveryManual = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const fileInputRef = useRef(null);
   
   const [formData, setFormData] = useState({
     customer_name: '',
@@ -22,7 +24,10 @@ const CreateDeliveryManual = () => {
     item_description: '',
     sku: '',
     delivery_notes: '',
+    image_url: '',
   });
+  
+  const [imagePreview, setImagePreview] = useState(null);
 
   const formatPhoneNumber = (value) => {
     const phoneNumber = value.replace(/\D/g, '');
@@ -33,6 +38,46 @@ const CreateDeliveryManual = () => {
     } else {
       return `${phoneNumber.slice(0, 3)}-${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)}`;
     }
+  };
+
+  const handleImageSelect = async (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+    
+    setUploading(true);
+    setError('');
+    
+    try {
+      const response = await uploadsAPI.uploadImages(files);
+      const imageUrl = response.data.urls[0];
+      
+      setFormData(prev => ({
+        ...prev,
+        image_url: imageUrl
+      }));
+      
+      setImagePreview({
+        url: imageUrl,
+        name: files[0].name
+      });
+      
+    } catch (err) {
+      console.error('Upload error:', err);
+      setError('Failed to upload image. Please try again.');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const removeImage = () => {
+    setFormData(prev => ({
+      ...prev,
+      image_url: ''
+    }));
+    setImagePreview(null);
   };
 
   const handleChange = (e) => {
@@ -64,6 +109,7 @@ const CreateDeliveryManual = () => {
         liberty_item_id: 'MANUAL-' + Date.now(),
         item_title: formData.item_title,
         item_description: formData.item_description,
+        image_url: formData.image_url,
         customer_name: formData.customer_name,
         customer_phone: formData.customer_phone,
         customer_email: formData.customer_email,
@@ -78,7 +124,6 @@ const CreateDeliveryManual = () => {
       const response = await tasksAPI.create(taskData);
       setSuccess(true);
       
-      // Navigate to task detail after short delay
       setTimeout(() => {
         navigate(`/tasks/${response.data.id}`);
       }, 1500);
@@ -270,6 +315,39 @@ const CreateDeliveryManual = () => {
                   rows="3"
                 />
               </div>
+
+              {/* Image Upload */}
+              <div className="form-group-new full-width">
+                <label>Item Photo (Optional)</label>
+                <div className="image-upload-area">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageSelect}
+                    style={{ display: 'none' }}
+                    id="image-upload"
+                  />
+                  <label htmlFor="image-upload" className="upload-button">
+                    {uploading ? 'Uploading...' : imagePreview ? 'Change Photo' : 'Add Photo'}
+                  </label>
+                </div>
+                
+                {imagePreview && (
+                  <div className="image-previews">
+                    <div className="image-preview-item">
+                      <img src={imagePreview.url} alt="Item preview" />
+                      <button
+                        type="button"
+                        className="remove-image-btn"
+                        onClick={removeImage}
+                      >
+                        X
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -293,7 +371,7 @@ const CreateDeliveryManual = () => {
             <button
               type="submit"
               className="btn-submit-new"
-              disabled={loading}
+              disabled={loading || uploading}
             >
               {loading ? 'Creating Delivery...' : 'Create Delivery'}
             </button>
@@ -305,4 +383,3 @@ const CreateDeliveryManual = () => {
 };
 
 export default CreateDeliveryManual;
-
