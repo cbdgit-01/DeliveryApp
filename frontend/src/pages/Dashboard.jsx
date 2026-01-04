@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { tasksAPI } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import anime from 'animejs';
 import './Dashboard.css';
 
 const Dashboard = () => {
+  const { isAdmin } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('active');
@@ -128,9 +130,11 @@ const Dashboard = () => {
             Manage deliveries, schedule routes, track payments.
           </p>
         </div>
-        <Link to="/deliveries/new" className="btn btn-primary">
-          + New Delivery
-        </Link>
+        {isAdmin() && (
+          <Link to="/deliveries/new" className="btn btn-primary">
+            + New Delivery
+          </Link>
+        )}
       </div>
 
       <div className="stats-grid">

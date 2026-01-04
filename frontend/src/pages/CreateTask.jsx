@@ -207,6 +207,10 @@ const CreateTask = () => {
             </div>
           </div>
         ) : (
+          <>
+          <button type="button" onClick={handleReset} className="back-link">
+            ← Back to Scan
+          </button>
           /* Step 2: Item Found - Show Details & Customer Form */
           <form onSubmit={handleSubmit} className="delivery-form">
             {/* Item Preview */}
@@ -370,6 +374,7 @@ const CreateTask = () => {
               </button>
             </div>
           </form>
+          </>
         )}
       </div>
     </div>
