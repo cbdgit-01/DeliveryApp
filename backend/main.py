@@ -14,11 +14,12 @@ for var_name in ["POSTGRES_URL", "DATABASE_PRIVATE_URL", "DATABASE_URL"]:
         print(f"{var_name}: NOT SET")
 print("=" * 50)
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from database import engine, Base, SessionLocal
+from sqlalchemy.orm import Session
+from database import engine, Base, SessionLocal, get_db
 from routers import auth_router, tasks_router, calendar_router, webhooks_router, schedule_router, items_router, pickups_router, sms_router, uploads_router
 from config import get_settings
 from models import User
@@ -102,6 +103,47 @@ def health_check():
         "status": "healthy",
         "database": db_type
     }
+
+
+@app.post("/admin/reset-database")
+def reset_database(
+    confirm: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Reset all data and restart ID sequences.
+    Requires confirmation code: RESET_ALL_DATA
+    
+    Usage: POST /admin/reset-database?confirm=RESET_ALL_DATA
+    """
+    if confirm != "RESET_ALL_DATA":
+        return {"error": "Invalid confirmation. Use confirm=RESET_ALL_DATA"}
+    
+    try:
+        from models import DeliveryTask, PickupRequest, SMSConversation
+        from sqlalchemy import text
+        
+        # Delete all records
+        db.query(DeliveryTask).delete()
+        db.query(PickupRequest).delete()
+        db.query(SMSConversation).delete()
+        db.commit()
+        
+        # Reset sequences (PostgreSQL)
+        if "postgresql" in settings.database_url:
+            db.execute(text("ALTER SEQUENCE delivery_tasks_id_seq RESTART WITH 1"))
+            db.execute(text("ALTER SEQUENCE pickup_requests_id_seq RESTART WITH 1"))
+            db.execute(text("ALTER SEQUENCE sms_conversations_id_seq RESTART WITH 1"))
+            db.commit()
+        
+        return {
+            "success": True,
+            "message": "All data deleted and IDs reset to 1",
+            "tables_cleared": ["delivery_tasks", "pickup_requests", "sms_conversations"]
+        }
+    except Exception as e:
+        db.rollback()
+        return {"error": str(e)}
 
 
 @app.get("/api-info")

@@ -1,8 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { tasksAPI, uploadsAPI } from '../services/api';
 import './CreateTask.css';
-import './TaskDetail.css';
 
 const CreateDeliveryManual = () => {
   const navigate = useNavigate();
@@ -21,13 +20,14 @@ const CreateDeliveryManual = () => {
     delivery_city: '',
     delivery_state: 'IN',
     delivery_zip: '',
+    item_title: '',
     item_description: '',
-    item_count: 1,
+    sku: '',
     delivery_notes: '',
-    item_photos: [],
+    image_url: '',
   });
   
-  const [imagePreviews, setImagePreviews] = useState([]);
+  const [imagePreview, setImagePreview] = useState(null);
 
   const formatPhoneNumber = (value) => {
     const phoneNumber = value.replace(/\D/g, '');
@@ -44,36 +44,26 @@ const CreateDeliveryManual = () => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
     
-    // Limit to 10 total images
-    const totalImages = formData.item_photos.length + files.length;
-    if (totalImages > 10) {
-      setError('Maximum 10 images allowed');
-      return;
-    }
-    
     setUploading(true);
     setError('');
     
     try {
       const response = await uploadsAPI.uploadImages(files);
-      const newUrls = response.data.urls;
+      const imageUrl = response.data.urls[0];
       
-      // Add to form data
       setFormData(prev => ({
         ...prev,
-        item_photos: [...prev.item_photos, ...newUrls]
+        image_url: imageUrl
       }));
       
-      // Add previews
-      const newPreviews = files.map((file, index) => ({
-        url: newUrls[index],
-        name: file.name
-      }));
-      setImagePreviews(prev => [...prev, ...newPreviews]);
+      setImagePreview({
+        url: imageUrl,
+        name: files[0].name
+      });
       
     } catch (err) {
       console.error('Upload error:', err);
-      setError('Failed to upload images. Please try again.');
+      setError('Failed to upload image. Please try again.');
     } finally {
       setUploading(false);
       if (fileInputRef.current) {
@@ -82,12 +72,12 @@ const CreateDeliveryManual = () => {
     }
   };
 
-  const removeImage = (index) => {
+  const removeImage = () => {
     setFormData(prev => ({
       ...prev,
-      item_photos: prev.item_photos.filter((_, i) => i !== index)
+      image_url: ''
     }));
-    setImagePreviews(prev => prev.filter((_, i) => i !== index));
+    setImagePreview(null);
   };
 
   const handleChange = (e) => {
@@ -98,11 +88,6 @@ const CreateDeliveryManual = () => {
       setFormData(prev => ({
         ...prev,
         [name]: formatted
-      }));
-    } else if (name === 'item_count') {
-      setFormData(prev => ({
-        ...prev,
-        [name]: parseInt(value) || 1
       }));
     } else {
       setFormData(prev => ({
@@ -118,21 +103,13 @@ const CreateDeliveryManual = () => {
     setLoading(true);
 
     try {
-      // Build item title from description
-      const itemTitle = formData.item_count > 1 
-        ? `${formData.item_count} Items - ${formData.item_description.substring(0, 50)}`
-        : formData.item_description.substring(0, 100);
-
       const taskData = {
         source: 'in_store',
-        sku: 'MANUAL-' + Date.now(),
+        sku: formData.sku || 'MANUAL-' + Date.now(),
         liberty_item_id: 'MANUAL-' + Date.now(),
-        item_title: itemTitle,
-        item_description: formData.item_count > 1 
-          ? `Estimated Items: ${formData.item_count}\n\n${formData.item_description}`
-          : formData.item_description,
-        // Use first image as main image_url
-        image_url: formData.item_photos.length > 0 ? formData.item_photos[0] : '',
+        item_title: formData.item_title,
+        item_description: formData.item_description,
+        image_url: formData.image_url,
         customer_name: formData.customer_name,
         customer_phone: formData.customer_phone,
         customer_email: formData.customer_email,
@@ -141,18 +118,14 @@ const CreateDeliveryManual = () => {
         delivery_city: formData.delivery_city,
         delivery_state: formData.delivery_state,
         delivery_zip: formData.delivery_zip,
-        // Include additional photos in notes if more than 1
-        delivery_notes: formData.item_photos.length > 1 
-          ? `${formData.delivery_notes}\n\nAdditional Photos:\n${formData.item_photos.slice(1).join('\n')}`.trim()
-          : formData.delivery_notes,
+        delivery_notes: formData.delivery_notes,
       };
 
-      await tasksAPI.create(taskData);
+      const response = await tasksAPI.create(taskData);
       setSuccess(true);
       
-      // Navigate to delivery dashboard after success
       setTimeout(() => {
-        navigate('/');
+        navigate(`/tasks/${response.data.id}`);
       }, 1500);
       
     } catch (err) {
@@ -165,9 +138,6 @@ const CreateDeliveryManual = () => {
 
   return (
     <div className="create-task-new">
-      <div style={{ marginBottom: '16px' }}>
-        <Link to="/" className="back-link">← Back to Deliveries</Link>
-      </div>
       <div className="page-header-new">
         <h1>New Delivery</h1>
         <p>Manually create a delivery ticket</p>
@@ -310,65 +280,71 @@ const CreateDeliveryManual = () => {
             
             <div className="form-grid">
               <div className="form-group-new full-width">
-                <label htmlFor="item_description">Item Description *</label>
-                <textarea
-                  id="item_description"
-                  name="item_description"
-                  value={formData.item_description}
+                <label htmlFor="item_title">Item Title *</label>
+                <input
+                  id="item_title"
+                  name="item_title"
+                  type="text"
+                  value={formData.item_title}
                   onChange={handleChange}
-                  placeholder="Describe the items for delivery (furniture type, condition, size, etc.)"
-                  rows="4"
+                  placeholder="Antique Oak Dresser"
                   required
                 />
               </div>
 
               <div className="form-group-new">
-                <label htmlFor="item_count">Estimated Number of Items</label>
+                <label htmlFor="sku">SKU / Item ID (Optional)</label>
                 <input
-                  id="item_count"
-                  name="item_count"
-                  type="number"
-                  min="1"
-                  value={formData.item_count}
+                  id="sku"
+                  name="sku"
+                  type="text"
+                  value={formData.sku}
                   onChange={handleChange}
+                  placeholder="1234-567"
+                />
+              </div>
+
+              <div className="form-group-new full-width">
+                <label htmlFor="item_description">Item Description (Optional)</label>
+                <textarea
+                  id="item_description"
+                  name="item_description"
+                  value={formData.item_description}
+                  onChange={handleChange}
+                  placeholder="Additional details about the item..."
+                  rows="3"
                 />
               </div>
 
               {/* Image Upload */}
               <div className="form-group-new full-width">
-                <label>Item Photos (Optional - up to 10 images)</label>
+                <label>Item Photo (Optional)</label>
                 <div className="image-upload-area">
                   <input
                     ref={fileInputRef}
                     type="file"
                     accept="image/*"
-                    multiple
                     onChange={handleImageSelect}
                     style={{ display: 'none' }}
                     id="image-upload"
                   />
                   <label htmlFor="image-upload" className="upload-button">
-                    {uploading ? 'Uploading...' : 'Add Photos'}
+                    {uploading ? 'Uploading...' : imagePreview ? 'Change Photo' : 'Add Photo'}
                   </label>
-                  <span className="upload-hint">
-                    {formData.item_photos.length}/10 photos added
-                  </span>
                 </div>
                 
-                {imagePreviews.length > 0 && (
+                {imagePreview && (
                   <div className="image-previews">
-                    {imagePreviews.map((preview, index) => (
-                      <div key={index} className="image-preview-item">
-                        <img src={preview.url} alt={`Preview ${index + 1}`} />
-                        <button
-                          type="button"
-                          className="remove-image-btn"
-                          onClick={() => removeImage(index)}
-                        >
-                          X
-                        </button>
-                      </div>
-                    ))}
+                    <div className="image-preview-item">
+                      <img src={imagePreview.url} alt="Item preview" />
+                      <button
+                        type="button"
+                        className="remove-image-btn"
+                        onClick={removeImage}
+                      >
+                        X
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
