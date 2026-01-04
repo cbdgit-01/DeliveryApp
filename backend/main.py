@@ -12,6 +12,15 @@ import os
 
 settings = get_settings()
 
+# Print database info for debugging
+db_type = "PostgreSQL" if "postgresql" in settings.database_url else "SQLite"
+print(f"🗄️  Database: {db_type}")
+if "postgresql" in settings.database_url:
+    # Don't print full URL (contains password), just confirm it's postgres
+    print(f"   Connected to PostgreSQL database")
+else:
+    print(f"   Using local SQLite: {settings.database_url}")
+
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
@@ -78,7 +87,11 @@ app.include_router(uploads_router.router)
 @app.get("/health")
 def health_check():
     """Health check endpoint"""
-    return {"status": "healthy"}
+    db_type = "postgresql" if "postgresql" in settings.database_url else "sqlite"
+    return {
+        "status": "healthy",
+        "database": db_type
+    }
 
 
 @app.get("/api-info")

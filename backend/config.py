@@ -1,10 +1,17 @@
 from pydantic_settings import BaseSettings
 from functools import lru_cache
+import os
 
 
 class Settings(BaseSettings):
-    # Database
-    database_url: str = "sqlite:///./delivery_app.db"
+    # Database - check multiple possible env var names
+    database_url: str = os.environ.get(
+        "DATABASE_URL",
+        os.environ.get(
+            "DATABASE_PRIVATE_URL",
+            "sqlite:///./delivery_app.db"
+        )
+    )
     
     # JWT
     jwt_secret: str
