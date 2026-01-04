@@ -131,23 +131,17 @@ const SMSRequests = () => {
 
       {/* Stats Grid */}
       <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-content">
-            <div className="stat-value">{stats.in_progress}</div>
-            <div className="stat-label">In Progress</div>
-          </div>
+        <div className="stat-card pending">
+          <div className="stat-number">{stats.in_progress}</div>
+          <div className="stat-label">In Progress</div>
+        </div>
+        <div className="stat-card paid">
+          <div className="stat-number">{stats.completed}</div>
+          <div className="stat-label">Completed</div>
         </div>
         <div className="stat-card">
-          <div className="stat-content">
-            <div className="stat-value">{stats.completed}</div>
-            <div className="stat-label">Completed</div>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-content">
-            <div className="stat-value">{stats.total}</div>
-            <div className="stat-label">Total</div>
-          </div>
+          <div className="stat-number">{stats.total}</div>
+          <div className="stat-label">Total</div>
         </div>
       </div>
 

@@ -72,6 +72,13 @@ const Layout = () => {
                 >
                   Calendar
                 </Link>
+                <Link
+                  to="/sms"
+                  className={`nav-link ${isActive('/sms') ? 'active' : ''}`}
+                  onClick={closeMenu}
+                >
+                  SMS
+                </Link>
               </>
             )}
           </div>
