@@ -74,17 +74,6 @@ const Layout = () => {
                 </Link>
               </>
             )}
-            
-            {/* Staff Navigation - Only New Delivery */}
-            {isStaff() && (
-              <Link
-                to="/tasks/new"
-                className={`nav-link ${isActive('/tasks/new') ? 'active' : ''}`}
-                onClick={closeMenu}
-              >
-                + New Delivery
-              </Link>
-            )}
           </div>
 
           <div className="navbar-user">
