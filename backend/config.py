@@ -4,11 +4,18 @@ import os
 
 
 class Settings(BaseSettings):
-    # Database - Check env var directly to avoid pydantic issues
-    # Railway provides DATABASE_URL for PostgreSQL
+    # Database - Try multiple env var names
+    # Railway can use DATABASE_URL or POSTGRES_URL
     @property
     def database_url(self) -> str:
-        return os.environ.get("DATABASE_URL", "sqlite:///./delivery_app.db")
+        # Check for PostgreSQL URL in various forms
+        pg_url = (
+            os.environ.get("POSTGRES_URL") or  # Try this first (custom)
+            os.environ.get("DATABASE_PRIVATE_URL") or
+            os.environ.get("DATABASE_URL") or
+            "sqlite:///./delivery_app.db"
+        )
+        return pg_url
     
     # JWT
     jwt_secret: str

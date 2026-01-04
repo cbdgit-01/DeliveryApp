@@ -1,18 +1,17 @@
 import os
 
-# DEBUG: Print DATABASE_URL from environment BEFORE any imports
+# DEBUG: Print all database-related env vars
 print("=" * 50)
 print("DATABASE DEBUG INFO")
 print("=" * 50)
-raw_db_url = os.environ.get("DATABASE_URL", "NOT SET")
-if raw_db_url != "NOT SET":
-    # Mask the password for security
-    if "@" in raw_db_url:
-        print(f"DATABASE_URL: postgresql://***@{raw_db_url.split('@')[1][:30]}...")
+for var_name in ["POSTGRES_URL", "DATABASE_PRIVATE_URL", "DATABASE_URL"]:
+    val = os.environ.get(var_name, "NOT SET")
+    if val != "NOT SET" and "@" in val:
+        print(f"{var_name}: postgresql://***@{val.split('@')[1][:30]}...")
+    elif val != "NOT SET":
+        print(f"{var_name}: {val[:50]}...")
     else:
-        print(f"DATABASE_URL: {raw_db_url[:50]}...")
-else:
-    print("DATABASE_URL: NOT SET - Will use SQLite default")
+        print(f"{var_name}: NOT SET")
 print("=" * 50)
 
 from fastapi import FastAPI
