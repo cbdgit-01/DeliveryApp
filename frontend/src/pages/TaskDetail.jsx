@@ -153,6 +153,21 @@ const TaskDetail = () => {
     }
   };
 
+  const handleDeleteTask = async () => {
+    if (!confirm('Delete this delivery from the system? This cannot be undone.')) return;
+
+    setUpdating(true);
+    try {
+      await tasksAPI.delete(id);
+      navigate('/');
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      alert('Failed to delete task');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const handleUnschedule = async () => {
     if (!confirm('Remove from schedule? This will set the delivery back to pending status.')) return;
 
@@ -489,6 +504,15 @@ const TaskDetail = () => {
                     Cancel Delivery
                   </button>
                 )}
+                {/* Delete from system */}
+                <button
+                  className="btn btn-danger btn-full"
+                  onClick={handleDeleteTask}
+                  disabled={updating}
+                  style={{ marginTop: '16px' }}
+                >
+                  Delete from System
+                </button>
               </div>
             </div>
           )}

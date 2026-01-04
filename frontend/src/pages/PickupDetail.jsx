@@ -308,21 +308,34 @@ const PickupDetail = () => {
                   Schedule this pickup from the calendar to continue.
                 </p>
               )}
+              {/* Delete from system */}
+              <button
+                className="btn btn-danger btn-full"
+                onClick={handleDelete}
+                disabled={updating}
+                style={{ marginTop: '16px' }}
+              >
+                Delete from System
+              </button>
             </div>
           </div>
         )}
 
-        {/* Delete */}
-        <div className="card">
-          <h2>Danger Zone</h2>
-          <button
-            className="btn btn-danger btn-full"
-            onClick={handleDelete}
-            disabled={updating}
-          >
-            🗑️ Delete Pickup Request
-          </button>
-        </div>
+        {/* Show actions for completed/declined pickups */}
+        {(pickup.status === 'completed' || pickup.status === 'declined') && (
+          <div className="card">
+            <h2>Actions</h2>
+            <div className="action-buttons">
+              <button
+                className="btn btn-danger btn-full"
+                onClick={handleDelete}
+                disabled={updating}
+              >
+                Delete from System
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
