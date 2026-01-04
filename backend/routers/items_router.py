@@ -84,118 +84,57 @@ async def lookup_shopify_product(sku: str):
             }
             """
             
-            # Try multiple search strategies
-            search_queries = [
-                f"sku:{sku}",           # Direct SKU match (e.g., "8097-16")
-                f"barcode:{sku}",       # Barcode field (might store item ID like "363068")
-                sku,                     # General search (searches title, description, etc.)
-            ]
+            # Search with a combined query for speed (OR logic in single request)
+            # This is much faster than sequential searches
+            combined_query = f"sku:{sku} OR barcode:{sku} OR {sku}"
             
-            for search_query in search_queries:
-                graphql_response = await client.post(
-                    graphql_url,
-                    headers=headers,
-                    json={"query": graphql_query, "variables": {"query": search_query}}
-                )
+            graphql_response = await client.post(
+                graphql_url,
+                headers=headers,
+                json={"query": graphql_query, "variables": {"query": combined_query}}
+            )
+            
+            if graphql_response.status_code == 200:
+                gql_data = graphql_response.json()
+                products = gql_data.get('data', {}).get('products', {}).get('edges', [])
                 
-                if graphql_response.status_code == 200:
-                    gql_data = graphql_response.json()
-                    products = gql_data.get('data', {}).get('products', {}).get('edges', [])
+                for product_edge in products:
+                    product = product_edge.get('node', {})
+                    variants = product.get('variants', {}).get('edges', [])
                     
-                    for product_edge in products:
-                        product = product_edge.get('node', {})
-                        variants = product.get('variants', {}).get('edges', [])
+                    for variant_edge in variants:
+                        variant = variant_edge.get('node', {})
+                        variant_sku = variant.get('sku', '')
+                        variant_barcode = variant.get('barcode', '')
                         
-                        for variant_edge in variants:
-                            variant = variant_edge.get('node', {})
-                            variant_sku = variant.get('sku', '')
-                            variant_barcode = variant.get('barcode', '')
+                        # Match by SKU, barcode, or if barcode contains the item ID
+                        if (variant_sku == sku or 
+                            variant_barcode == sku or 
+                            sku in str(variant_barcode) or
+                            sku in str(variant_sku)):
+                            # Get all images
+                            images = []
+                            if product.get('featuredImage'):
+                                images.append(product['featuredImage']['url'])
+                            for img_edge in product.get('images', {}).get('edges', []):
+                                img_url = img_edge.get('node', {}).get('url')
+                                if img_url and img_url not in images:
+                                    images.append(img_url)
                             
-                            # Match by SKU, barcode, or if barcode contains the item ID
-                            if (variant_sku == sku or 
-                                variant_barcode == sku or 
-                                sku in str(variant_barcode) or
-                                sku in str(variant_sku)):
-                                # Get all images
-                                images = []
-                                if product.get('featuredImage'):
-                                    images.append(product['featuredImage']['url'])
-                                for img_edge in product.get('images', {}).get('edges', []):
-                                    img_url = img_edge.get('node', {}).get('url')
-                                    if img_url and img_url not in images:
-                                        images.append(img_url)
-                                
-                                return {
-                                    "sku": variant_sku or sku,
-                                    "liberty_item_id": variant_barcode or sku,
-                                    "title": product.get('title', ''),
-                                    "description": product.get('description', ''),
-                                    "image_url": images[0] if images else None,
-                                    "images": images,
-                                    "price": variant.get('price'),
-                                    "inventory_quantity": variant.get('inventoryQuantity'),
-                                    "shopify_product_id": product.get('id', '').split('/')[-1],
-                                    "shopify_variant_id": variant.get('id', '').split('/')[-1]
-                                }
+                            return {
+                                "sku": variant_sku or sku,
+                                "liberty_item_id": variant_barcode or sku,
+                                "title": product.get('title', ''),
+                                "description": product.get('description', ''),
+                                "image_url": images[0] if images else None,
+                                "images": images,
+                                "price": variant.get('price'),
+                                "inventory_quantity": variant.get('inventoryQuantity'),
+                                "shopify_product_id": product.get('id', '').split('/')[-1],
+                                "shopify_variant_id": variant.get('id', '').split('/')[-1]
+                            }
             
-            # Method 2: Fallback to REST API with pagination
-            url = get_shopify_api_url("products.json")
-            page_info = None
-            
-            while True:
-                params = {"limit": 250}
-                if page_info:
-                    params["page_info"] = page_info
-                
-                response = await client.get(url, headers=headers, params=params)
-                
-                if response.status_code == 200:
-                    data = response.json()
-                    products = data.get('products', [])
-                    
-                    # Find product with matching SKU or barcode in variants
-                    for product in products:
-                        for variant in product.get('variants', []):
-                            variant_sku = variant.get('sku', '')
-                            variant_barcode = variant.get('barcode', '')
-                            
-                            # Match by SKU, barcode, or partial match
-                            if (variant_sku == sku or 
-                                variant_barcode == sku or 
-                                sku in str(variant_barcode) or
-                                sku in str(variant_sku)):
-                                # Get all images
-                                images = [img.get('src') for img in product.get('images', []) if img.get('src')]
-                                
-                                return {
-                                    "sku": variant_sku or sku,
-                                    "liberty_item_id": variant_barcode or sku,
-                                    "title": product.get('title', ''),
-                                    "description": product.get('body_html', ''),
-                                    "image_url": images[0] if images else None,
-                                    "images": images,
-                                    "price": variant.get('price'),
-                                    "inventory_quantity": variant.get('inventory_quantity'),
-                                    "shopify_product_id": str(product.get('id')),
-                                    "shopify_variant_id": str(variant.get('id'))
-                                }
-                    
-                    # Check for pagination
-                    link_header = response.headers.get('Link', '')
-                    if 'rel="next"' in link_header:
-                        # Extract page_info for next page
-                        import re
-                        match = re.search(r'page_info=([^>&]+).*rel="next"', link_header)
-                        if match:
-                            page_info = match.group(1)
-                            continue
-                    
-                    # No more pages
-                    break
-                else:
-                    print(f"Shopify REST API error: {response.status_code} - {response.text}")
-                    break
-            
+            # Not found via GraphQL - return None immediately (no slow REST fallback)
             return None
                 
     except Exception as e:
