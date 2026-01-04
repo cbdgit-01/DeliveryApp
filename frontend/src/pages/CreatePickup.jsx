@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { pickupsAPI, uploadsAPI } from '../services/api';
-import './CreateTask.css'; // Reuse CreateTask styles
+import './CreateTask.css';
+import './TaskDetail.css';
 
 const CreatePickup = () => {
   const navigate = useNavigate();
@@ -135,6 +136,9 @@ const CreatePickup = () => {
 
   return (
     <div className="create-task-new">
+      <div style={{ marginBottom: '16px' }}>
+        <Link to="/pickups" className="back-link">← Back to Pickups</Link>
+      </div>
       <div className="page-header-new">
         <h1>New Pickup Request</h1>
         <p>Enter customer and item information</p>

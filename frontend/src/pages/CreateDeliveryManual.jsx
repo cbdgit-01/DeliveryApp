@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { tasksAPI, uploadsAPI } from '../services/api';
 import './CreateTask.css';
+import './TaskDetail.css';
 
 const CreateDeliveryManual = () => {
   const navigate = useNavigate();
@@ -164,6 +165,9 @@ const CreateDeliveryManual = () => {
 
   return (
     <div className="create-task-new">
+      <div style={{ marginBottom: '16px' }}>
+        <Link to="/" className="back-link">← Back to Deliveries</Link>
+      </div>
       <div className="page-header-new">
         <h1>New Delivery</h1>
         <p>Manually create a delivery ticket</p>
