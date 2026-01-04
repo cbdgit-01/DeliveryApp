@@ -27,8 +27,9 @@ def get_shopify_api_url(endpoint: str, api_version: str = "2024-01"):
 
 async def lookup_shopify_product(sku: str):
     """
-    Lookup product from Shopify by SKU
+    Lookup product from Shopify by SKU or Item ID
     Returns product details if found
+    Searches multiple fields: SKU, barcode, and general search
     """
     if not all([settings.shopify_shop_url, settings.shopify_access_token]):
         # Development mode - return mock data
@@ -50,7 +51,7 @@ async def lookup_shopify_product(sku: str):
             graphql_url = get_shopify_api_url("graphql.json")
             graphql_query = """
             query searchProductBySku($query: String!) {
-                products(first: 5, query: $query) {
+                products(first: 10, query: $query) {
                     edges {
                         node {
                             id
@@ -71,6 +72,7 @@ async def lookup_shopify_product(sku: str):
                                     node {
                                         id
                                         sku
+                                        barcode
                                         price
                                         inventoryQuantity
                                     }
@@ -82,44 +84,59 @@ async def lookup_shopify_product(sku: str):
             }
             """
             
-            graphql_response = await client.post(
-                graphql_url,
-                headers=headers,
-                json={"query": graphql_query, "variables": {"query": f"sku:{sku}"}}
-            )
+            # Try multiple search strategies
+            search_queries = [
+                f"sku:{sku}",           # Direct SKU match (e.g., "8097-16")
+                f"barcode:{sku}",       # Barcode field (might store item ID like "363068")
+                sku,                     # General search (searches title, description, etc.)
+            ]
             
-            if graphql_response.status_code == 200:
-                gql_data = graphql_response.json()
-                products = gql_data.get('data', {}).get('products', {}).get('edges', [])
+            for search_query in search_queries:
+                graphql_response = await client.post(
+                    graphql_url,
+                    headers=headers,
+                    json={"query": graphql_query, "variables": {"query": search_query}}
+                )
                 
-                for product_edge in products:
-                    product = product_edge.get('node', {})
-                    variants = product.get('variants', {}).get('edges', [])
+                if graphql_response.status_code == 200:
+                    gql_data = graphql_response.json()
+                    products = gql_data.get('data', {}).get('products', {}).get('edges', [])
                     
-                    for variant_edge in variants:
-                        variant = variant_edge.get('node', {})
-                        if variant.get('sku') == sku:
-                            # Get all images
-                            images = []
-                            if product.get('featuredImage'):
-                                images.append(product['featuredImage']['url'])
-                            for img_edge in product.get('images', {}).get('edges', []):
-                                img_url = img_edge.get('node', {}).get('url')
-                                if img_url and img_url not in images:
-                                    images.append(img_url)
+                    for product_edge in products:
+                        product = product_edge.get('node', {})
+                        variants = product.get('variants', {}).get('edges', [])
+                        
+                        for variant_edge in variants:
+                            variant = variant_edge.get('node', {})
+                            variant_sku = variant.get('sku', '')
+                            variant_barcode = variant.get('barcode', '')
                             
-                            return {
-                                "sku": sku,
-                                "liberty_item_id": sku.replace('-', '').upper(),
-                                "title": product.get('title', ''),
-                                "description": product.get('description', ''),
-                                "image_url": images[0] if images else None,
-                                "images": images,
-                                "price": variant.get('price'),
-                                "inventory_quantity": variant.get('inventoryQuantity'),
-                                "shopify_product_id": product.get('id', '').split('/')[-1],
-                                "shopify_variant_id": variant.get('id', '').split('/')[-1]
-                            }
+                            # Match by SKU, barcode, or if barcode contains the item ID
+                            if (variant_sku == sku or 
+                                variant_barcode == sku or 
+                                sku in str(variant_barcode) or
+                                sku in str(variant_sku)):
+                                # Get all images
+                                images = []
+                                if product.get('featuredImage'):
+                                    images.append(product['featuredImage']['url'])
+                                for img_edge in product.get('images', {}).get('edges', []):
+                                    img_url = img_edge.get('node', {}).get('url')
+                                    if img_url and img_url not in images:
+                                        images.append(img_url)
+                                
+                                return {
+                                    "sku": variant_sku or sku,
+                                    "liberty_item_id": variant_barcode or sku,
+                                    "title": product.get('title', ''),
+                                    "description": product.get('description', ''),
+                                    "image_url": images[0] if images else None,
+                                    "images": images,
+                                    "price": variant.get('price'),
+                                    "inventory_quantity": variant.get('inventoryQuantity'),
+                                    "shopify_product_id": product.get('id', '').split('/')[-1],
+                                    "shopify_variant_id": variant.get('id', '').split('/')[-1]
+                                }
             
             # Method 2: Fallback to REST API with pagination
             url = get_shopify_api_url("products.json")
@@ -136,16 +153,23 @@ async def lookup_shopify_product(sku: str):
                     data = response.json()
                     products = data.get('products', [])
                     
-                    # Find product with matching SKU in variants
+                    # Find product with matching SKU or barcode in variants
                     for product in products:
                         for variant in product.get('variants', []):
-                            if variant.get('sku') == sku:
+                            variant_sku = variant.get('sku', '')
+                            variant_barcode = variant.get('barcode', '')
+                            
+                            # Match by SKU, barcode, or partial match
+                            if (variant_sku == sku or 
+                                variant_barcode == sku or 
+                                sku in str(variant_barcode) or
+                                sku in str(variant_sku)):
                                 # Get all images
                                 images = [img.get('src') for img in product.get('images', []) if img.get('src')]
                                 
                                 return {
-                                    "sku": sku,
-                                    "liberty_item_id": sku.replace('-', '').upper(),
+                                    "sku": variant_sku or sku,
+                                    "liberty_item_id": variant_barcode or sku,
                                     "title": product.get('title', ''),
                                     "description": product.get('body_html', ''),
                                     "image_url": images[0] if images else None,

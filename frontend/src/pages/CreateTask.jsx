@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { tasksAPI, itemsAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -14,6 +14,23 @@ const CreateTask = () => {
   
   const [skuInput, setSkuInput] = useState('');
   const [itemFound, setItemFound] = useState(false);
+
+  // Block keyboard shortcuts at document level to prevent scanner interference
+  // Scanners sometimes send Ctrl+Shift+B which opens Firefox Library
+  useEffect(() => {
+    const blockShortcuts = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey) {
+        if (['b', 'B', 'o', 'O', 'h', 'H', 'p', 'P'].includes(e.key)) {
+          e.preventDefault();
+          e.stopPropagation();
+          return false;
+        }
+      }
+    };
+    
+    document.addEventListener('keydown', blockShortcuts, true);
+    return () => document.removeEventListener('keydown', blockShortcuts, true);
+  }, []);
   
   const [formData, setFormData] = useState({
     source: 'in_store',
