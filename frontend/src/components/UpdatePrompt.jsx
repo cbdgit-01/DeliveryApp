@@ -4,12 +4,17 @@ import './UpdatePrompt.css';
 const UpdatePrompt = () => {
   const [showPrompt, setShowPrompt] = useState(false);
   const [currentVersion, setCurrentVersion] = useState(null);
+  const [debugInfo, setDebugInfo] = useState('');
 
   const checkForUpdates = useCallback(async () => {
     try {
       // Fetch version.json with cache busting
       const response = await fetch(`/version.json?t=${Date.now()}`, {
-        cache: 'no-store'
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
       });
       
       if (response.ok) {
@@ -19,26 +24,37 @@ const UpdatePrompt = () => {
         // Get stored version from localStorage
         const storedVersion = localStorage.getItem('app_version');
         
+        console.log('Version check:', { serverVersion, storedVersion });
+        setDebugInfo(`Server: ${serverVersion}, Stored: ${storedVersion || 'none'}`);
+        
         if (!storedVersion) {
           // First visit - store the version
           localStorage.setItem('app_version', serverVersion);
           setCurrentVersion(serverVersion);
+          console.log('First visit, stored version:', serverVersion);
         } else if (storedVersion !== serverVersion) {
           // Version mismatch - update available!
+          console.log('Update available!', storedVersion, '->', serverVersion);
           setCurrentVersion(serverVersion);
           setShowPrompt(true);
+        } else {
+          console.log('Version match, no update needed');
         }
+      } else {
+        console.log('Version fetch failed:', response.status);
+        setDebugInfo(`Fetch failed: ${response.status}`);
       }
     } catch (error) {
-      console.log('Version check failed:', error);
+      console.log('Version check error:', error);
+      setDebugInfo(`Error: ${error.message}`);
     }
   }, []);
 
   useEffect(() => {
-    // Check immediately after a short delay
-    const initialCheck = setTimeout(checkForUpdates, 2000);
+    // Check immediately
+    checkForUpdates();
 
-    // Check when app becomes visible (user returns to app)
+    // Check when app becomes visible
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
         checkForUpdates();
@@ -46,11 +62,10 @@ const UpdatePrompt = () => {
     };
     document.addEventListener('visibilitychange', handleVisibility);
 
-    // Check every minute
-    const interval = setInterval(checkForUpdates, 60 * 1000);
+    // Check every 30 seconds for testing
+    const interval = setInterval(checkForUpdates, 30 * 1000);
 
     return () => {
-      clearTimeout(initialCheck);
       clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVisibility);
     };
@@ -62,7 +77,7 @@ const UpdatePrompt = () => {
       localStorage.setItem('app_version', currentVersion);
     }
     
-    // Clear all caches if possible
+    // Clear all caches
     if ('caches' in window) {
       caches.keys().then(names => {
         names.forEach(name => caches.delete(name));
@@ -77,21 +92,34 @@ const UpdatePrompt = () => {
     setShowPrompt(false);
   };
 
-  if (!showPrompt) return null;
-
+  // Always show a small refresh button in corner for manual refresh
   return (
-    <div className="update-prompt">
-      <div className="update-prompt-content">
-        <span className="update-icon">↻</span>
-        <span className="update-text">New version available</span>
-        <button onClick={handleRefresh} className="update-btn">
-          Refresh
-        </button>
-        <button onClick={handleDismiss} className="dismiss-btn">
-          ✕
-        </button>
-      </div>
-    </div>
+    <>
+      {/* Debug/Manual refresh button - always visible */}
+      <button 
+        onClick={handleRefresh}
+        className="manual-refresh-btn"
+        title={debugInfo}
+      >
+        ↻
+      </button>
+
+      {/* Update prompt when new version detected */}
+      {showPrompt && (
+        <div className="update-prompt">
+          <div className="update-prompt-content">
+            <span className="update-icon">↻</span>
+            <span className="update-text">New version available</span>
+            <button onClick={handleRefresh} className="update-btn">
+              Refresh
+            </button>
+            <button onClick={handleDismiss} className="dismiss-btn">
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 
