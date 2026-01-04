@@ -44,6 +44,17 @@ const CreateTask = () => {
       const response = await itemsAPI.lookup(skuInput.trim());
       
       if (response.data.found) {
+        // Check availability
+        if (!response.data.available) {
+          const status = response.data.inventory_status;
+          const statusMsg = status?.status === 'sold' 
+            ? 'This item has been sold.' 
+            : 'This item is not available.';
+          setError(`${statusMsg} Please check the item and try again.`);
+          setItemFound(false);
+          return;
+        }
+        
         const item = response.data.item;
         setFormData(prev => ({
           ...prev,
@@ -65,6 +76,19 @@ const CreateTask = () => {
       setItemFound(false);
     } finally {
       setLookingUp(false);
+    }
+  };
+
+  // Prevent keyboard shortcuts that interfere with barcode scanning
+  // Firefox Ctrl+Shift+B opens Library, scanners sometimes send modifier keys
+  const handleKeyDown = (e) => {
+    // Block common browser shortcuts that scanners might trigger
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey) {
+      // Ctrl+Shift+B (Firefox Library), Ctrl+Shift+O (Firefox Bookmarks)
+      if (['b', 'o', 'h', 'p'].includes(e.key.toLowerCase())) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
     }
   };
 
@@ -191,6 +215,7 @@ const CreateTask = () => {
                   type="text"
                   value={skuInput}
                   onChange={(e) => setSkuInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
                   placeholder="Enter SKU or Item ID"
                   className="sku-input"
                   autoFocus

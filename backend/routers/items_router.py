@@ -378,28 +378,72 @@ async def lookup_item(
     """
     Lookup item by SKU - used for scanning items during delivery creation
     Returns item details from Shopify or local database
+    Handles barcode scanners that add leading zeros
     """
     if not sku:
         raise HTTPException(status_code=400, detail="SKU is required")
     
-    # Clean up SKU (remove whitespace, convert to uppercase if needed)
+    # Clean up SKU (remove whitespace)
     sku = sku.strip()
+    original_input = sku
     
-    # Try to lookup from Shopify
-    item_data = await lookup_shopify_product(sku)
+    # Try multiple lookup strategies
+    lookup_attempts = [sku]
     
-    if item_data:
-        return {
-            "found": True,
-            "item": item_data
-        }
-    else:
-        # Return not found with suggestions
-        return {
-            "found": False,
-            "message": "Item not found. Please check the SKU and try again.",
-            "sku": sku
-        }
+    # Strategy 1: Strip leading zeros (barcodes often add 00 prefix)
+    stripped_sku = sku.lstrip('0')
+    if stripped_sku and stripped_sku != sku:
+        lookup_attempts.append(stripped_sku)
+    
+    # Strategy 2: If it's all numeric, it might be an item number that needs SKU format
+    # Some systems store as "363068" but SKU might be "3630-68" or similar
+    if stripped_sku.isdigit() and len(stripped_sku) >= 4:
+        # Try common SKU formats: XXXX-XX, XXX-XXX, etc.
+        if len(stripped_sku) == 6:
+            lookup_attempts.append(f"{stripped_sku[:4]}-{stripped_sku[4:]}")
+            lookup_attempts.append(f"{stripped_sku[:3]}-{stripped_sku[3:]}")
+        elif len(stripped_sku) == 7:
+            lookup_attempts.append(f"{stripped_sku[:4]}-{stripped_sku[4:]}")
+    
+    # Try each lookup strategy
+    for attempt_sku in lookup_attempts:
+        item_data = await lookup_shopify_product(attempt_sku)
+        
+        if item_data:
+            # Check inventory availability
+            inventory_qty = item_data.get('inventory_quantity')
+            
+            # Item found - check if it's available
+            if inventory_qty is not None and inventory_qty <= 0:
+                return {
+                    "found": True,
+                    "available": False,
+                    "item": item_data,
+                    "message": "Item found but is not available (sold or out of stock)",
+                    "inventory_status": {
+                        "quantity": inventory_qty,
+                        "status": "sold" if inventory_qty == 0 else "unavailable"
+                    }
+                }
+            
+            return {
+                "found": True,
+                "available": True,
+                "item": item_data,
+                "inventory_status": {
+                    "quantity": inventory_qty,
+                    "status": "available"
+                }
+            }
+    
+    # Return not found with the original input and what we tried
+    return {
+        "found": False,
+        "available": False,
+        "message": f"Item not found. Searched for: {', '.join(lookup_attempts)}",
+        "sku": original_input,
+        "attempted_skus": lookup_attempts
+    }
 
 
 
