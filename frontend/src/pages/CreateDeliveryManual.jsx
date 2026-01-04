@@ -24,10 +24,10 @@ const CreateDeliveryManual = () => {
     item_description: '',
     sku: '',
     delivery_notes: '',
-    image_url: '',
+    item_photos: [],
   });
   
-  const [imagePreview, setImagePreview] = useState(null);
+  const [imagePreviews, setImagePreviews] = useState([]);
 
   const formatPhoneNumber = (value) => {
     const phoneNumber = value.replace(/\D/g, '');
@@ -44,26 +44,36 @@ const CreateDeliveryManual = () => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
     
+    // Limit to 10 total images
+    const totalImages = formData.item_photos.length + files.length;
+    if (totalImages > 10) {
+      setError('Maximum 10 images allowed');
+      return;
+    }
+    
     setUploading(true);
     setError('');
     
     try {
       const response = await uploadsAPI.uploadImages(files);
-      const imageUrl = response.data.urls[0];
+      const newUrls = response.data.urls;
       
+      // Add to form data
       setFormData(prev => ({
         ...prev,
-        image_url: imageUrl
+        item_photos: [...prev.item_photos, ...newUrls]
       }));
       
-      setImagePreview({
-        url: imageUrl,
-        name: files[0].name
-      });
+      // Add previews
+      const newPreviews = files.map((file, index) => ({
+        url: newUrls[index],
+        name: file.name
+      }));
+      setImagePreviews(prev => [...prev, ...newPreviews]);
       
     } catch (err) {
       console.error('Upload error:', err);
-      setError('Failed to upload image. Please try again.');
+      setError('Failed to upload images. Please try again.');
     } finally {
       setUploading(false);
       if (fileInputRef.current) {
@@ -72,12 +82,12 @@ const CreateDeliveryManual = () => {
     }
   };
 
-  const removeImage = () => {
+  const removeImage = (index) => {
     setFormData(prev => ({
       ...prev,
-      image_url: ''
+      item_photos: prev.item_photos.filter((_, i) => i !== index)
     }));
-    setImagePreview(null);
+    setImagePreviews(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleChange = (e) => {
@@ -109,7 +119,8 @@ const CreateDeliveryManual = () => {
         liberty_item_id: 'MANUAL-' + Date.now(),
         item_title: formData.item_title,
         item_description: formData.item_description,
-        image_url: formData.image_url,
+        // Use first image as main image_url
+        image_url: formData.item_photos.length > 0 ? formData.item_photos[0] : '',
         customer_name: formData.customer_name,
         customer_phone: formData.customer_phone,
         customer_email: formData.customer_email,
@@ -118,7 +129,10 @@ const CreateDeliveryManual = () => {
         delivery_city: formData.delivery_city,
         delivery_state: formData.delivery_state,
         delivery_zip: formData.delivery_zip,
-        delivery_notes: formData.delivery_notes,
+        // Include additional photos in notes if more than 1
+        delivery_notes: formData.item_photos.length > 1 
+          ? `${formData.delivery_notes}\n\nAdditional Photos:\n${formData.item_photos.slice(1).join('\n')}`.trim()
+          : formData.delivery_notes,
       };
 
       const response = await tasksAPI.create(taskData);
@@ -318,33 +332,39 @@ const CreateDeliveryManual = () => {
 
               {/* Image Upload */}
               <div className="form-group-new full-width">
-                <label>Item Photo (Optional)</label>
+                <label>Item Photos (Optional - up to 10 images)</label>
                 <div className="image-upload-area">
                   <input
                     ref={fileInputRef}
                     type="file"
                     accept="image/*"
+                    multiple
                     onChange={handleImageSelect}
                     style={{ display: 'none' }}
                     id="image-upload"
                   />
                   <label htmlFor="image-upload" className="upload-button">
-                    {uploading ? 'Uploading...' : imagePreview ? 'Change Photo' : 'Add Photo'}
+                    {uploading ? 'Uploading...' : 'Add Photos'}
                   </label>
+                  <span className="upload-hint">
+                    {formData.item_photos.length}/10 photos added
+                  </span>
                 </div>
                 
-                {imagePreview && (
+                {imagePreviews.length > 0 && (
                   <div className="image-previews">
-                    <div className="image-preview-item">
-                      <img src={imagePreview.url} alt="Item preview" />
-                      <button
-                        type="button"
-                        className="remove-image-btn"
-                        onClick={removeImage}
-                      >
-                        X
-                      </button>
-                    </div>
+                    {imagePreviews.map((preview, index) => (
+                      <div key={index} className="image-preview-item">
+                        <img src={preview.url} alt={`Preview ${index + 1}`} />
+                        <button
+                          type="button"
+                          className="remove-image-btn"
+                          onClick={() => removeImage(index)}
+                        >
+                          X
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
