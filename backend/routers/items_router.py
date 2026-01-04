@@ -87,9 +87,14 @@ async def lookup_shopify_product(sku: str):
             # Run multiple search strategies in PARALLEL for speed
             import asyncio
             
+            # Log what we're searching for
+            print(f"[SHOPIFY LOOKUP] Searching for: {sku}")
+            
             search_queries = [
-                f"sku:{sku}",      # Direct SKU match (e.g., "8097-16")
-                sku,               # General search (finds item ID in product title/fields)
+                f"sku:{sku}",          # Direct SKU match (e.g., "8097-16")
+                f"barcode:{sku}",      # Barcode field (might store item ID)
+                f"title:{sku}",        # Product title
+                sku,                   # General search
             ]
             
             async def do_search(query):
@@ -104,25 +109,34 @@ async def lookup_shopify_product(sku: str):
             responses = await asyncio.gather(*[do_search(q) for q in search_queries])
             
             # Check results from all searches
-            for graphql_response in responses:
+            for idx, graphql_response in enumerate(responses):
                 if graphql_response.status_code == 200:
                     gql_data = graphql_response.json()
                     products = gql_data.get('data', {}).get('products', {}).get('edges', [])
                     
+                    print(f"[SHOPIFY LOOKUP] Query '{search_queries[idx]}' returned {len(products)} products")
+                    
                     for product_edge in products:
                         product = product_edge.get('node', {})
+                        product_title = product.get('title', '')
                         variants = product.get('variants', {}).get('edges', [])
+                        
+                        print(f"[SHOPIFY LOOKUP] Found product: {product_title}")
                         
                         for variant_edge in variants:
                             variant = variant_edge.get('node', {})
                             variant_sku = variant.get('sku', '')
                             variant_barcode = variant.get('barcode', '')
                             
-                            # Match by SKU, barcode, or if item ID is in SKU/barcode
+                            print(f"[SHOPIFY LOOKUP] Variant SKU: {variant_sku}, Barcode: {variant_barcode}")
+                            
+                            # Match by SKU, barcode, if item ID is in SKU/barcode, 
+                            # OR if item ID is in product title
                             if (variant_sku == sku or 
                                 variant_barcode == sku or 
                                 sku in str(variant_barcode) or
-                                sku in str(variant_sku)):
+                                sku in str(variant_sku) or
+                                sku in product_title):
                                 # Get all images
                                 images = []
                                 if product.get('featuredImage'):
@@ -132,10 +146,11 @@ async def lookup_shopify_product(sku: str):
                                     if img_url and img_url not in images:
                                         images.append(img_url)
                                 
+                                print(f"[SHOPIFY LOOKUP] MATCH FOUND!")
                                 return {
                                     "sku": variant_sku or sku,
                                     "liberty_item_id": variant_barcode or sku,
-                                    "title": product.get('title', ''),
+                                    "title": product_title,
                                     "description": product.get('description', ''),
                                     "image_url": images[0] if images else None,
                                     "images": images,
@@ -145,6 +160,7 @@ async def lookup_shopify_product(sku: str):
                                     "shopify_variant_id": variant.get('id', '').split('/')[-1]
                                 }
             
+            print(f"[SHOPIFY LOOKUP] No match found for: {sku}")
             # Not found - return None immediately (no slow REST fallback)
             return None
                 
