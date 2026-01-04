@@ -73,11 +73,18 @@ const Layout = () => {
                   Calendar
                 </Link>
                 <Link
-                  to="/sms"
-                  className={`nav-link ${isActive('/sms') ? 'active' : ''}`}
+                  to="/tasks/new"
+                  className={`nav-link highlight ${isActive('/tasks/new') ? 'active' : ''}`}
                   onClick={closeMenu}
                 >
-                  SMS
+                  + New Delivery
+                </Link>
+                <Link
+                  to="/pickups/new"
+                  className={`nav-link highlight ${isActive('/pickups/new') ? 'active' : ''}`}
+                  onClick={closeMenu}
+                >
+                  + New Pickup
                 </Link>
               </>
             )}

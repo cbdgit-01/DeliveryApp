@@ -10,10 +10,10 @@
 
 .login-theme-toggle {
   position: absolute;
-  top: 24px;
-  right: 24px;
-  width: 40px;
-  height: 40px;
+  top: calc(24px + env(safe-area-inset-top));
+  right: max(24px, env(safe-area-inset-right));
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   border: 1px solid var(--border-default);
   background: var(--bg-card);
@@ -21,10 +21,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
-  font-weight: 300;
+  font-size: 20px;
   transition: all 0.2s ease;
   color: #facc15;
+  z-index: 100;
 }
 
 .login-theme-toggle:hover {
@@ -39,7 +39,7 @@
 
 /* Moon icon in light mode */
 [data-theme="light"] .login-theme-toggle {
-  color: var(--text-muted);
+  color: #64748b;
 }
 
 .login-box {

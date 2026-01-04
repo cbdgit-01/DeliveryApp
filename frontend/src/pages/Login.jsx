@@ -49,7 +49,7 @@ const Login = () => {
         onClick={toggleTheme}
         title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
       >
-        {isDark ? '✹' : '🌙'}
+        {isDark ? '☀' : '☽'}
       </button>
       <div className="login-box">
         <div className="login-header">

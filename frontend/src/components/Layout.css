@@ -83,6 +83,14 @@
   border: 1px solid var(--border-default);
 }
 
+.nav-link.highlight {
+  color: var(--status-scheduled);
+}
+
+.nav-link.highlight:hover {
+  color: var(--text-primary);
+}
+
 .navbar-user {
   display: flex;
   align-items: center;
