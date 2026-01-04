@@ -10,6 +10,7 @@ const PickupDetail = () => {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState('');
+  const [showMenu, setShowMenu] = useState(false);
 
   const fetchPickup = async () => {
     try {
@@ -140,14 +141,36 @@ const PickupDetail = () => {
 
   return (
     <div className="task-detail">
-      <div className="task-detail-header">
+      <div className="detail-header">
         <Link to="/pickups" className="back-link">
           ← Back to Pickups
         </Link>
-        <h1>Pickup Request #{pickup.id}</h1>
+        <h1>Pickup Details</h1>
         <span className={getStatusBadgeClass(pickup.status)}>
           {getStatusLabel(pickup.status)}
         </span>
+        <div className="header-menu">
+          <button 
+            className="menu-trigger" 
+            onClick={() => setShowMenu(!showMenu)}
+            aria-label="More options"
+          >
+            ⋮
+          </button>
+          {showMenu && (
+            <div className="menu-dropdown">
+              <button 
+                className="menu-item menu-item-danger"
+                onClick={() => {
+                  setShowMenu(false);
+                  handleDelete();
+                }}
+              >
+                Delete from System
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="task-detail-grid">
@@ -308,31 +331,23 @@ const PickupDetail = () => {
                   Schedule this pickup from the calendar to continue.
                 </p>
               )}
-              {/* Delete from system */}
-              <button
-                className="btn btn-danger btn-full"
-                onClick={handleDelete}
-                disabled={updating}
-                style={{ marginTop: '16px' }}
-              >
-                Delete from System
-              </button>
             </div>
           </div>
         )}
 
-        {/* Show actions for completed/declined pickups */}
+        {/* Show info for completed/declined pickups */}
         {(pickup.status === 'completed' || pickup.status === 'declined') && (
           <div className="card">
             <h2>Actions</h2>
             <div className="action-buttons">
-              <button
-                className="btn btn-danger btn-full"
-                onClick={handleDelete}
-                disabled={updating}
-              >
-                Delete from System
-              </button>
+              <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-xs)', textAlign: 'center' }}>
+                {pickup.status === 'completed' 
+                  ? 'This pickup has been completed.'
+                  : 'This pickup was declined.'
+                }
+                <br />
+                Use the menu (⋮) to delete if needed.
+              </p>
             </div>
           </div>
         )}

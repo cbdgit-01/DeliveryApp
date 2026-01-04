@@ -12,6 +12,7 @@ const TaskDetail = () => {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [showScheduleForm, setShowScheduleForm] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [scheduleData, setScheduleData] = useState({
     scheduled_start: '',
@@ -226,6 +227,28 @@ const TaskDetail = () => {
           ← Back
         </button>
         <h1>Delivery Details</h1>
+        <div className="header-menu">
+          <button 
+            className="menu-trigger" 
+            onClick={() => setShowMenu(!showMenu)}
+            aria-label="More options"
+          >
+            ⋮
+          </button>
+          {showMenu && (
+            <div className="menu-dropdown">
+              <button 
+                className="menu-item menu-item-danger"
+                onClick={() => {
+                  setShowMenu(false);
+                  handleDeleteTask();
+                }}
+              >
+                Delete from System
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="detail-grid">
@@ -495,24 +518,24 @@ const TaskDetail = () => {
                     💰 Payment Received
                   </button>
                 )}
-                {task.status !== 'delivered' && task.status !== 'paid' && task.status !== 'cancelled' && (
+                {task.status === 'pending' && (
                   <button
-                    className="btn btn-secondary btn-full"
-                    onClick={handleCancelTask}
+                    className="btn btn-primary btn-full"
+                    onClick={() => setShowScheduleForm(true)}
                     disabled={updating}
                   >
-                    Cancel Delivery
+                    Schedule Delivery
                   </button>
                 )}
-                {/* Delete from system */}
-                <button
-                  className="btn btn-danger btn-full"
-                  onClick={handleDeleteTask}
-                  disabled={updating}
-                  style={{ marginTop: '16px' }}
-                >
-                  Delete from System
-                </button>
+                {task.status === 'cancelled' && (
+                  <button
+                    className="btn btn-primary btn-full"
+                    onClick={() => setShowScheduleForm(true)}
+                    disabled={updating}
+                  >
+                    Reschedule Delivery
+                  </button>
+                )}
               </div>
             </div>
           )}
