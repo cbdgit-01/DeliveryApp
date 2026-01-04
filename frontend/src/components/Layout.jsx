@@ -100,7 +100,7 @@ const Layout = () => {
               onClick={toggleTheme}
               title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
             >
-              {isDark ? '✹' : '🌙'}
+              {isDark ? '☀' : '☽'}
             </button>
             <span className="user-role">{user?.role}</span>
             <span className="user-name">{user?.full_name || user?.username}</span>

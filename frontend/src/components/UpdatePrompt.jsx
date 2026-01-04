@@ -4,7 +4,6 @@ import './UpdatePrompt.css';
 const UpdatePrompt = () => {
   const [showPrompt, setShowPrompt] = useState(false);
   const [currentVersion, setCurrentVersion] = useState(null);
-  const [debugInfo, setDebugInfo] = useState('');
 
   const checkForUpdates = useCallback(async () => {
     try {
@@ -24,29 +23,18 @@ const UpdatePrompt = () => {
         // Get stored version from localStorage
         const storedVersion = localStorage.getItem('app_version');
         
-        console.log('Version check:', { serverVersion, storedVersion });
-        setDebugInfo(`Server: ${serverVersion}, Stored: ${storedVersion || 'none'}`);
-        
         if (!storedVersion) {
           // First visit - store the version
           localStorage.setItem('app_version', serverVersion);
           setCurrentVersion(serverVersion);
-          console.log('First visit, stored version:', serverVersion);
         } else if (storedVersion !== serverVersion) {
           // Version mismatch - update available!
-          console.log('Update available!', storedVersion, '->', serverVersion);
           setCurrentVersion(serverVersion);
           setShowPrompt(true);
-        } else {
-          console.log('Version match, no update needed');
         }
-      } else {
-        console.log('Version fetch failed:', response.status);
-        setDebugInfo(`Fetch failed: ${response.status}`);
       }
     } catch (error) {
       console.log('Version check error:', error);
-      setDebugInfo(`Error: ${error.message}`);
     }
   }, []);
 
@@ -62,8 +50,8 @@ const UpdatePrompt = () => {
     };
     document.addEventListener('visibilitychange', handleVisibility);
 
-    // Check every 30 seconds for testing
-    const interval = setInterval(checkForUpdates, 30 * 1000);
+    // Check every 60 seconds
+    const interval = setInterval(checkForUpdates, 60 * 1000);
 
     return () => {
       clearInterval(interval);
@@ -71,7 +59,7 @@ const UpdatePrompt = () => {
     };
   }, [checkForUpdates]);
 
-  const handleRefresh = () => {
+  const handleUpdate = () => {
     // Update stored version before refresh
     if (currentVersion) {
       localStorage.setItem('app_version', currentVersion);
@@ -92,34 +80,25 @@ const UpdatePrompt = () => {
     setShowPrompt(false);
   };
 
-  // Always show a small refresh button in corner for manual refresh
-  return (
-    <>
-      {/* Debug/Manual refresh button - always visible */}
-      <button 
-        onClick={handleRefresh}
-        className="manual-refresh-btn"
-        title={debugInfo}
-      >
-        ↻
-      </button>
+  if (!showPrompt) return null;
 
-      {/* Update prompt when new version detected */}
-      {showPrompt && (
-        <div className="update-prompt">
-          <div className="update-prompt-content">
-            <span className="update-icon">↻</span>
-            <span className="update-text">New version available</span>
-            <button onClick={handleRefresh} className="update-btn">
-              Refresh
-            </button>
-            <button onClick={handleDismiss} className="dismiss-btn">
-              ✕
-            </button>
-          </div>
+  return (
+    <div className="update-prompt">
+      <div className="update-prompt-content">
+        <div className="update-info">
+          <span className="update-title">New Version Available</span>
+          <span className="update-version">v{currentVersion}</span>
         </div>
-      )}
-    </>
+        <div className="update-actions">
+          <button onClick={handleUpdate} className="update-btn">
+            Update
+          </button>
+          <button onClick={handleDismiss} className="dismiss-btn">
+            Later
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };
 

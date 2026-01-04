@@ -1,62 +1,36 @@
-/* Manual refresh button - always visible in bottom right */
-.manual-refresh-btn {
-  position: fixed;
-  bottom: 20px;
-  right: 16px;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: var(--bg-card);
-  border: 1px solid var(--border-default);
-  color: var(--text-muted);
-  font-size: 20px;
-  cursor: pointer;
-  z-index: 9998;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-  transition: all 0.2s;
-  margin-bottom: env(safe-area-inset-bottom);
-}
-
-.manual-refresh-btn:hover {
-  background: var(--bg-card-hover);
-  color: var(--text-primary);
-}
-
-.manual-refresh-btn:active {
-  transform: scale(0.95);
-  background: var(--text-primary);
-  color: var(--text-inverse);
-}
-
 /* Update prompt banner */
 .update-prompt {
   position: fixed;
-  bottom: 80px;
-  left: 50%;
-  transform: translateX(-50%);
+  bottom: 0;
+  left: 0;
+  right: 0;
   z-index: 10000;
-  padding-bottom: env(safe-area-inset-bottom);
+  padding: 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.7));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .update-prompt-content {
+  max-width: 500px;
+  margin: 0 auto;
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: space-between;
+  gap: 16px;
   background: var(--bg-card);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-pill);
-  padding: 10px 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   animation: slideUp 0.3s ease-out;
 }
 
 @keyframes slideUp {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(30px);
   }
   to {
     opacity: 1;
@@ -64,64 +38,94 @@
   }
 }
 
-.update-icon {
-  font-size: 18px;
-  color: var(--status-scheduled);
+.update-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.update-text {
-  font-size: var(--font-size-xs);
+.update-title {
+  font-size: var(--font-size-base);
+  font-weight: 600;
   color: var(--text-primary);
-  font-weight: 500;
+}
+
+.update-version {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.update-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
 
 .update-btn {
   background: var(--text-primary);
   color: var(--text-inverse);
   border: none;
-  border-radius: var(--radius-pill);
-  padding: 6px 14px;
-  font-size: var(--font-size-xs);
-  font-weight: 500;
+  border-radius: var(--radius-md);
+  padding: 10px 20px;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: all 0.2s;
 }
 
 .update-btn:hover {
   opacity: 0.9;
+  transform: scale(1.02);
+}
+
+.update-btn:active {
+  transform: scale(0.98);
 }
 
 .dismiss-btn {
-  background: none;
-  border: none;
+  background: transparent;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
   color: var(--text-muted);
   cursor: pointer;
-  padding: 4px;
-  font-size: 14px;
-  line-height: 1;
-  transition: color 0.2s;
+  padding: 10px 16px;
+  font-size: var(--font-size-sm);
+  transition: all 0.2s;
 }
 
 .dismiss-btn:hover {
   color: var(--text-primary);
+  border-color: var(--text-muted);
 }
 
 /* Mobile adjustments */
 @media (max-width: 480px) {
   .update-prompt {
-    left: 16px;
-    right: 16px;
-    bottom: 80px;
-    transform: none;
+    padding: 12px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
   }
   
   .update-prompt-content {
+    flex-direction: column;
+    text-align: center;
+    padding: 16px;
+  }
+  
+  .update-info {
+    align-items: center;
+  }
+  
+  .update-actions {
     width: 100%;
     justify-content: center;
   }
   
-  .manual-refresh-btn {
-    bottom: 20px;
-    right: 16px;
+  .update-btn {
+    flex: 1;
+    padding: 12px 20px;
+  }
+  
+  .dismiss-btn {
+    padding: 12px 16px;
   }
 }
