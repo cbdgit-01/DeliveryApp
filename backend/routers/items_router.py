@@ -46,7 +46,7 @@ async def lookup_shopify_product(sku: str):
     try:
         headers = get_shopify_headers()
         
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=5.0) as client:
             # Method 1: Try GraphQL search first (more efficient)
             graphql_url = get_shopify_api_url("graphql.json")
             graphql_query = """
@@ -464,7 +464,7 @@ async def lookup_item(
     return {
         "found": False,
         "available": False,
-        "message": f"Item not found. Searched for: {', '.join(lookup_attempts)}",
+        "message": "Item not found. Please check the SKU or item number and try again.",
         "sku": original_input,
         "attempted_skus": lookup_attempts
     }
