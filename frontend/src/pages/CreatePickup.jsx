@@ -1,12 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { pickupsAPI, uploadsAPI } from '../services/api';
-import { useAuth } from '../context/AuthContext';
 import './CreateTask.css'; // Reuse CreateTask styles
 
 const CreatePickup = () => {
   const navigate = useNavigate();
-  const { isAdmin } = useAuth();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
@@ -120,35 +118,13 @@ const CreatePickup = () => {
     setLoading(true);
 
     try {
-      const response = await pickupsAPI.create(formData);
+      await pickupsAPI.create(formData);
       setSuccess(true);
       
-      // For admin, navigate to pickup detail
-      if (isAdmin()) {
-        setTimeout(() => {
-          navigate(`/pickups/${response.data.id}`);
-        }, 1500);
-      } else {
-        // Reset form after success
-        setTimeout(() => {
-          setSuccess(false);
-          setFormData({
-            customer_name: '',
-            customer_phone: '',
-            customer_email: '',
-            pickup_address_line1: '',
-            pickup_address_line2: '',
-            pickup_city: '',
-            pickup_state: 'IN',
-            pickup_zip: '',
-            item_description: '',
-            item_count: 1,
-            pickup_notes: '',
-            item_photos: [],
-          });
-          setImagePreviews([]);
-        }, 2000);
-      }
+      // Navigate to pickups dashboard after success
+      setTimeout(() => {
+        navigate('/pickups');
+      }, 1500);
     } catch (err) {
       console.error('Error creating pickup:', err);
       setError(err.response?.data?.detail || 'Failed to create pickup request');

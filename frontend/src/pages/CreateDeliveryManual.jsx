@@ -22,7 +22,6 @@ const CreateDeliveryManual = () => {
     delivery_zip: '',
     item_description: '',
     item_count: 1,
-    sku: '',
     delivery_notes: '',
     item_photos: [],
   });
@@ -118,17 +117,19 @@ const CreateDeliveryManual = () => {
     setLoading(true);
 
     try {
-      // Build item title from description and count
+      // Build item title from description
       const itemTitle = formData.item_count > 1 
-        ? `${formData.item_count} Items - ${formData.item_description.substring(0, 50)}...`
+        ? `${formData.item_count} Items - ${formData.item_description.substring(0, 50)}`
         : formData.item_description.substring(0, 100);
 
       const taskData = {
         source: 'in_store',
-        sku: formData.sku || 'MANUAL-' + Date.now(),
+        sku: 'MANUAL-' + Date.now(),
         liberty_item_id: 'MANUAL-' + Date.now(),
         item_title: itemTitle,
-        item_description: `Item Count: ${formData.item_count}\n\n${formData.item_description}`,
+        item_description: formData.item_count > 1 
+          ? `Estimated Items: ${formData.item_count}\n\n${formData.item_description}`
+          : formData.item_description,
         // Use first image as main image_url
         image_url: formData.item_photos.length > 0 ? formData.item_photos[0] : '',
         customer_name: formData.customer_name,
@@ -145,11 +146,12 @@ const CreateDeliveryManual = () => {
           : formData.delivery_notes,
       };
 
-      const response = await tasksAPI.create(taskData);
+      await tasksAPI.create(taskData);
       setSuccess(true);
       
+      // Navigate to delivery dashboard after success
       setTimeout(() => {
-        navigate(`/tasks/${response.data.id}`);
+        navigate('/');
       }, 1500);
       
     } catch (err) {
@@ -298,49 +300,35 @@ const CreateDeliveryManual = () => {
             </div>
           </div>
 
-                  {/* Item Information */}
-                  <div className="form-section-new">
-                    <h2>Item Information</h2>
-                    
-                    <div className="form-grid">
-                      <div className="form-group-new">
-                        <label htmlFor="item_count">Number of Items *</label>
-                        <input
-                          id="item_count"
-                          name="item_count"
-                          type="number"
-                          min="1"
-                          max="50"
-                          value={formData.item_count}
-                          onChange={handleChange}
-                          required
-                        />
-                      </div>
+          {/* Item Information */}
+          <div className="form-section-new">
+            <h2>Item Information</h2>
+            
+            <div className="form-grid">
+              <div className="form-group-new full-width">
+                <label htmlFor="item_description">Item Description *</label>
+                <textarea
+                  id="item_description"
+                  name="item_description"
+                  value={formData.item_description}
+                  onChange={handleChange}
+                  placeholder="Describe the items for delivery (furniture type, condition, size, etc.)"
+                  rows="4"
+                  required
+                />
+              </div>
 
-                      <div className="form-group-new">
-                        <label htmlFor="sku">SKU / Item ID (Optional)</label>
-                        <input
-                          id="sku"
-                          name="sku"
-                          type="text"
-                          value={formData.sku}
-                          onChange={handleChange}
-                          placeholder="1234-567"
-                        />
-                      </div>
-
-                      <div className="form-group-new full-width">
-                        <label htmlFor="item_description">Item Description *</label>
-                        <textarea
-                          id="item_description"
-                          name="item_description"
-                          value={formData.item_description}
-                          onChange={handleChange}
-                          placeholder="Describe the items being delivered (e.g., Antique Oak Dresser, 2 Dining Chairs, Coffee Table)"
-                          rows="4"
-                          required
-                        />
-                      </div>
+              <div className="form-group-new">
+                <label htmlFor="item_count">Estimated Number of Items</label>
+                <input
+                  id="item_count"
+                  name="item_count"
+                  type="number"
+                  min="1"
+                  value={formData.item_count}
+                  onChange={handleChange}
+                />
+              </div>
 
               {/* Image Upload */}
               <div className="form-group-new full-width">
