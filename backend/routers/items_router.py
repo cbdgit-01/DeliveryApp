@@ -116,49 +116,46 @@ async def lookup_shopify_product(sku: str):
                     
                     print(f"[SHOPIFY LOOKUP] Query '{search_queries[idx]}' returned {len(products)} products")
                     
-                    for product_edge in products:
+                    # If we found products, return the first one
+                    # Shopify's search already matched our query, so trust it
+                    if products:
+                        product_edge = products[0]
                         product = product_edge.get('node', {})
                         product_title = product.get('title', '')
                         variants = product.get('variants', {}).get('edges', [])
                         
                         print(f"[SHOPIFY LOOKUP] Found product: {product_title}")
                         
-                        for variant_edge in variants:
-                            variant = variant_edge.get('node', {})
+                        # Get first variant (most products have one variant)
+                        if variants:
+                            variant = variants[0].get('node', {})
                             variant_sku = variant.get('sku', '')
                             variant_barcode = variant.get('barcode', '')
                             
                             print(f"[SHOPIFY LOOKUP] Variant SKU: {variant_sku}, Barcode: {variant_barcode}")
                             
-                            # Match by SKU, barcode, if item ID is in SKU/barcode, 
-                            # OR if item ID is in product title
-                            if (variant_sku == sku or 
-                                variant_barcode == sku or 
-                                sku in str(variant_barcode) or
-                                sku in str(variant_sku) or
-                                sku in product_title):
-                                # Get all images
-                                images = []
-                                if product.get('featuredImage'):
-                                    images.append(product['featuredImage']['url'])
-                                for img_edge in product.get('images', {}).get('edges', []):
-                                    img_url = img_edge.get('node', {}).get('url')
-                                    if img_url and img_url not in images:
-                                        images.append(img_url)
-                                
-                                print(f"[SHOPIFY LOOKUP] MATCH FOUND!")
-                                return {
-                                    "sku": variant_sku or sku,
-                                    "liberty_item_id": variant_barcode or sku,
-                                    "title": product_title,
-                                    "description": product.get('description', ''),
-                                    "image_url": images[0] if images else None,
-                                    "images": images,
-                                    "price": variant.get('price'),
-                                    "inventory_quantity": variant.get('inventoryQuantity'),
-                                    "shopify_product_id": product.get('id', '').split('/')[-1],
-                                    "shopify_variant_id": variant.get('id', '').split('/')[-1]
-                                }
+                            # Get all images
+                            images = []
+                            if product.get('featuredImage'):
+                                images.append(product['featuredImage']['url'])
+                            for img_edge in product.get('images', {}).get('edges', []):
+                                img_url = img_edge.get('node', {}).get('url')
+                                if img_url and img_url not in images:
+                                    images.append(img_url)
+                            
+                            print(f"[SHOPIFY LOOKUP] MATCH FOUND!")
+                            return {
+                                "sku": variant_sku or sku,
+                                "liberty_item_id": variant_barcode or sku,
+                                "title": product_title,
+                                "description": product.get('description', ''),
+                                "image_url": images[0] if images else None,
+                                "images": images,
+                                "price": variant.get('price'),
+                                "inventory_quantity": variant.get('inventoryQuantity'),
+                                "shopify_product_id": product.get('id', '').split('/')[-1],
+                                "shopify_variant_id": variant.get('id', '').split('/')[-1]
+                            }
             
             print(f"[SHOPIFY LOOKUP] No match found for: {sku}")
             # Not found - return None immediately (no slow REST fallback)
