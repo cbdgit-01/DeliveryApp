@@ -25,6 +25,85 @@ def get_shopify_api_url(endpoint: str, api_version: str = "2024-01"):
     return f"https://{shop_url}/admin/api/{api_version}/{endpoint}"
 
 
+async def check_recent_sale(product_id: str, hours: float = 1.0):
+    """
+    Check if a product was sold within the last X hours.
+    Returns True if there's a recent order containing this product.
+    """
+    if not all([settings.shopify_shop_url, settings.shopify_access_token]):
+        return False
+    
+    try:
+        from datetime import datetime, timedelta
+        
+        # Calculate the cutoff time
+        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+        cutoff_str = cutoff_time.strftime("%Y-%m-%dT%H:%M:%SZ")
+        
+        headers = get_shopify_headers()
+        graphql_url = get_shopify_api_url("graphql.json")
+        
+        # Query recent orders
+        graphql_query = """
+        query recentOrders($query: String!) {
+            orders(first: 20, query: $query, sortKey: CREATED_AT, reverse: true) {
+                edges {
+                    node {
+                        id
+                        createdAt
+                        lineItems(first: 50) {
+                            edges {
+                                node {
+                                    product {
+                                        id
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        """
+        
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.post(
+                graphql_url,
+                headers=headers,
+                json={
+                    "query": graphql_query,
+                    "variables": {"query": f"created_at:>={cutoff_str}"}
+                }
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                orders = data.get('data', {}).get('orders', {}).get('edges', [])
+                
+                # Full product ID format
+                full_product_id = f"gid://shopify/Product/{product_id}"
+                
+                for order_edge in orders:
+                    order = order_edge.get('node', {})
+                    line_items = order.get('lineItems', {}).get('edges', [])
+                    
+                    for line_item_edge in line_items:
+                        line_item = line_item_edge.get('node', {})
+                        product = line_item.get('product')
+                        if product and product.get('id') == full_product_id:
+                            print(f"[SHOPIFY] Found recent sale of product {product_id} in order {order.get('id')}")
+                            return True
+                
+                print(f"[SHOPIFY] No recent sale found for product {product_id}")
+                return False
+            
+            return False
+            
+    except Exception as e:
+        print(f"Error checking recent sales: {e}")
+        return False
+
+
 async def lookup_shopify_product(sku: str):
     """
     Lookup product from Shopify by SKU or Item ID
@@ -399,19 +478,40 @@ async def lookup_item(
         if item_data:
             # Check inventory availability
             inventory_qty = item_data.get('inventory_quantity')
+            product_id = item_data.get('shopify_product_id')
             
             # Item found - check if it's available
             if inventory_qty is not None and inventory_qty <= 0:
-                return {
-                    "found": True,
-                    "available": False,
-                    "item": item_data,
-                    "message": "Item found but is not available (sold or out of stock)",
-                    "inventory_status": {
-                        "quantity": inventory_qty,
-                        "status": "sold" if inventory_qty == 0 else "unavailable"
+                # Item shows as sold - check if it was sold recently (within 1 hour)
+                # This allows staff to scan items right after a sale
+                recently_sold = False
+                if product_id:
+                    recently_sold = await check_recent_sale(product_id, hours=1.0)
+                
+                if recently_sold:
+                    # Item was sold within the last hour - allow it!
+                    return {
+                        "found": True,
+                        "available": True,  # Allow it since it was just sold
+                        "item": item_data,
+                        "message": "Item was just sold - ready for delivery scheduling",
+                        "inventory_status": {
+                            "quantity": inventory_qty,
+                            "status": "recently_sold"
+                        }
                     }
-                }
+                else:
+                    # Item was sold more than an hour ago
+                    return {
+                        "found": True,
+                        "available": False,
+                        "item": item_data,
+                        "message": "Item was sold more than an hour ago",
+                        "inventory_status": {
+                            "quantity": inventory_qty,
+                            "status": "sold"
+                        }
+                    }
             
             return {
                 "found": True,
