@@ -34,6 +34,46 @@ print(f"🗄️  Using Database: {db_type}")
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
+# Ensure schema is up to date (add missing columns safely)
+def ensure_schema_updates():
+    """Add any missing columns to existing tables - safe for production"""
+    from sqlalchemy import text
+    from database import engine
+    
+    # List of schema updates (column additions only - safe operations)
+    schema_updates = [
+        # Add items column to delivery_tasks if it doesn't exist
+        ("delivery_tasks", "items", "ALTER TABLE delivery_tasks ADD COLUMN IF NOT EXISTS items JSON"),
+    ]
+    
+    with engine.connect() as conn:
+        for table, column, sql in schema_updates:
+            try:
+                # Check if column exists (PostgreSQL)
+                if "postgresql" in settings.database_url:
+                    result = conn.execute(text(
+                        f"SELECT column_name FROM information_schema.columns "
+                        f"WHERE table_name='{table}' AND column_name='{column}'"
+                    ))
+                    if result.fetchone() is None:
+                        conn.execute(text(sql))
+                        conn.commit()
+                        print(f"✓ Added column: {table}.{column}")
+                    else:
+                        print(f"✓ Column exists: {table}.{column}")
+                else:
+                    # SQLite - just try to add, ignore if exists
+                    try:
+                        conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} JSON"))
+                        conn.commit()
+                        print(f"✓ Added column: {table}.{column}")
+                    except:
+                        print(f"✓ Column exists: {table}.{column}")
+            except Exception as e:
+                print(f"Schema update skipped for {table}.{column}: {e}")
+
+ensure_schema_updates()
+
 # Sync users from config file
 def sync_users():
     """Sync users from users_config.py to database"""
