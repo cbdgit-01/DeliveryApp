@@ -305,42 +305,66 @@ const TaskDetail = () => {
           </div>
 
           <div className="card">
-            <h2>Item Information</h2>
-            <div className="info-grid">
-              <div className="info-item">
-                <label>Item</label>
-                <div className="info-value">{task.item_title}</div>
+            <h2>Item Information {task.items && task.items.length > 1 ? `(${task.items.length} items)` : ''}</h2>
+            
+            {/* Multiple items display */}
+            {task.items && task.items.length > 0 ? (
+              <div className="multi-items-list">
+                {task.items.map((item, index) => (
+                  <div key={index} className="multi-item-card">
+                    {item.image_url && (
+                      <img src={item.image_url} alt={item.title} className="multi-item-image" />
+                    )}
+                    <div className="multi-item-info">
+                      <h4>{item.title}</h4>
+                      <p className="multi-item-sku">SKU: {item.sku}</p>
+                      {item.description && (
+                        <p className="multi-item-desc">{item.description}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
+            ) : (
+              /* Single item display (backwards compatible) */
+              <>
+                <div className="info-grid">
+                  <div className="info-item">
+                    <label>Item</label>
+                    <div className="info-value">{task.item_title}</div>
+                  </div>
 
-              <div className="info-item">
-                <label>SKU</label>
-                <div className="info-value">{task.sku}</div>
-              </div>
+                  <div className="info-item">
+                    <label>SKU</label>
+                    <div className="info-value">{task.sku}</div>
+                  </div>
 
-              <div className="info-item">
-                <label>Liberty ID</label>
-                <div className="info-value">{task.liberty_item_id}</div>
-              </div>
+                  <div className="info-item">
+                    <label>Liberty ID</label>
+                    <div className="info-value">{task.liberty_item_id}</div>
+                  </div>
 
-              {task.shopify_order_number && (
-                <div className="info-item">
-                  <label>Order Number</label>
-                  <div className="info-value">#{task.shopify_order_number}</div>
+                  {task.shopify_order_number && (
+                    <div className="info-item">
+                      <label>Order Number</label>
+                      <div className="info-value">#{task.shopify_order_number}</div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
 
-            {task.item_description && (
-              <div className="info-item">
-                <label>Description</label>
-                <div className="info-value">{task.item_description}</div>
-              </div>
-            )}
+                {task.item_description && (
+                  <div className="info-item" style={{ marginTop: '12px' }}>
+                    <label>Description</label>
+                    <div className="info-value">{task.item_description}</div>
+                  </div>
+                )}
 
-            {task.image_url && (
-              <div className="item-image">
-                <img src={task.image_url} alt={task.item_title} />
-              </div>
+                {task.image_url && (
+                  <div className="item-image">
+                    <img src={task.image_url} alt={task.item_title} />
+                  </div>
+                )}
+              </>
             )}
           </div>
 

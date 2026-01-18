@@ -36,6 +36,15 @@ class Token(BaseModel):
     user: UserResponse
 
 
+# Item schema for multi-item deliveries
+class DeliveryItem(BaseModel):
+    sku: str
+    item_id: Optional[str] = None
+    title: str
+    description: Optional[str] = None
+    image_url: Optional[str] = None
+
+
 # DeliveryTask schemas
 class DeliveryTaskBase(BaseModel):
     source: TaskSource
@@ -44,6 +53,7 @@ class DeliveryTaskBase(BaseModel):
     item_title: str
     item_description: Optional[str] = None
     image_url: Optional[str] = None
+    items: Optional[List[DeliveryItem]] = None  # Multiple items support
     customer_name: str
     customer_phone: str
     customer_email: Optional[str] = None
@@ -80,6 +90,7 @@ class DeliveryTaskResponse(DeliveryTaskBase):
     status: TaskStatus
     shopify_order_id: Optional[str] = None
     shopify_order_number: Optional[str] = None
+    items: Optional[List[DeliveryItem]] = None  # Multiple items
     scheduled_start: Optional[datetime] = None
     scheduled_end: Optional[datetime] = None
     assigned_to: Optional[str] = None

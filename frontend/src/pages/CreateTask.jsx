@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { tasksAPI, itemsAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -13,17 +13,16 @@ const CreateTask = () => {
   const [success, setSuccess] = useState(false);
   
   const [skuInput, setSkuInput] = useState('');
-  const [itemFound, setItemFound] = useState(false);
+  const [items, setItems] = useState([]); // Multiple items support
+  const [addingMore, setAddingMore] = useState(false); // Show scan input for additional items
   const [soldWarning, setSoldWarning] = useState(false);
+  const skuInputRef = useRef(null);
 
   // Block keyboard shortcuts at document level to prevent scanner interference
-  // POSX scanners send Ctrl+J which opens Downloads in Chrome/Firefox
   useEffect(() => {
     const blockShortcuts = (e) => {
-      // Block Ctrl+J (Downloads), Ctrl+Shift+B (Library), etc.
       if (e.ctrlKey || e.metaKey) {
         const key = e.key.toLowerCase();
-        // j = downloads, b = bookmarks, o = open, h = history, d = bookmark
         if (['j', 'b', 'o', 'h', 'd', 'p', 's'].includes(key)) {
           e.preventDefault();
           e.stopPropagation();
@@ -32,7 +31,6 @@ const CreateTask = () => {
       }
     };
     
-    // Use capture phase to intercept before browser handles it
     document.addEventListener('keydown', blockShortcuts, true);
     window.addEventListener('keydown', blockShortcuts, true);
     return () => {
@@ -40,14 +38,15 @@ const CreateTask = () => {
       window.removeEventListener('keydown', blockShortcuts, true);
     };
   }, []);
+
+  // Auto-focus SKU input when adding more items
+  useEffect(() => {
+    if (addingMore && skuInputRef.current) {
+      skuInputRef.current.focus();
+    }
+  }, [addingMore]);
   
   const [formData, setFormData] = useState({
-    source: 'in_store',
-    sku: '',
-    liberty_item_id: '',
-    item_title: '',
-    item_description: '',
-    image_url: '',
     customer_name: '',
     customer_phone: '',
     customer_email: '',
@@ -73,40 +72,38 @@ const CreateTask = () => {
         const item = response.data.item;
         const status = response.data.inventory_status;
         
-        // Show warning if item shows as sold/unavailable (but allow proceeding)
+        // Show warning if item shows as sold/unavailable
         const isSold = !response.data.available || status?.status === 'sold' || status?.status === 'unavailable';
-        setSoldWarning(isSold);
+        if (isSold) {
+          setSoldWarning(true);
+        }
         
-        setFormData(prev => ({
-          ...prev,
+        // Add item to list
+        const newItem = {
           sku: item.sku,
-          liberty_item_id: item.liberty_item_id,
-          item_title: item.title,
-          item_description: item.description || '',
+          item_id: item.liberty_item_id,
+          title: item.title,
+          description: item.description || '',
           image_url: item.image_url || '',
-        }));
-        setItemFound(true);
+        };
+        
+        setItems(prev => [...prev, newItem]);
+        setSkuInput('');
+        setAddingMore(false);
         setError('');
       } else {
         setError(response.data.message || 'Item not found');
-        setItemFound(false);
-        setSoldWarning(false);
       }
     } catch (err) {
       console.error('Error looking up item:', err);
-      setError('Failed to lookup item. Please enter details manually.');
-      setItemFound(false);
+      setError('Failed to lookup item. Please try again.');
     } finally {
       setLookingUp(false);
     }
   };
 
-  // Prevent keyboard shortcuts that interfere with barcode scanning
-  // Firefox Ctrl+Shift+B opens Library, scanners sometimes send modifier keys
   const handleKeyDown = (e) => {
-    // Block common browser shortcuts that scanners might trigger
     if ((e.ctrlKey || e.metaKey) && e.shiftKey) {
-      // Ctrl+Shift+B (Firefox Library), Ctrl+Shift+O (Firefox Bookmarks)
       if (['b', 'o', 'h', 'p'].includes(e.key.toLowerCase())) {
         e.preventDefault();
         e.stopPropagation();
@@ -115,10 +112,7 @@ const CreateTask = () => {
   };
 
   const formatPhoneNumber = (value) => {
-    // Remove all non-digits
     const phoneNumber = value.replace(/\D/g, '');
-    
-    // Format as XXX-XXX-XXXX
     if (phoneNumber.length <= 3) {
       return phoneNumber;
     } else if (phoneNumber.length <= 6) {
@@ -131,56 +125,71 @@ const CreateTask = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     
-    // Auto-format phone number
     if (name === 'customer_phone') {
       const formatted = formatPhoneNumber(value);
-      setFormData(prev => ({
-        ...prev,
-        [name]: formatted
-      }));
+      setFormData(prev => ({ ...prev, [name]: formatted }));
     } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value
-      }));
+      setFormData(prev => ({ ...prev, [name]: value }));
     }
+  };
+
+  const removeItem = (index) => {
+    setItems(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (items.length === 0) {
+      setError('Please add at least one item');
+      return;
+    }
+    
     setError('');
     setLoading(true);
 
     try {
-      const response = await tasksAPI.create(formData);
+      // Build item title summary
+      const itemTitle = items.length === 1 
+        ? items[0].title 
+        : `${items.length} Items: ${items.map(i => i.title).join(', ').substring(0, 100)}`;
+      
+      const taskData = {
+        source: 'in_store',
+        // Primary item fields (for backwards compatibility)
+        sku: items[0].sku,
+        liberty_item_id: items[0].item_id,
+        item_title: itemTitle,
+        item_description: items.length > 1 
+          ? items.map(i => `• ${i.title} (SKU: ${i.sku})`).join('\n')
+          : items[0].description,
+        image_url: items[0].image_url,
+        // Multiple items array
+        items: items,
+        // Customer & delivery info
+        ...formData,
+      };
+
+      const response = await tasksAPI.create(taskData);
       setSuccess(true);
       
-      // For staff, show success and reset form
       if (isStaff()) {
         setTimeout(() => {
           setSuccess(false);
-          setItemFound(false);
-          setSkuInput('');
+          setItems([]);
+          setSoldWarning(false);
           setFormData({
-            source: 'in_store',
-            sku: '',
-            liberty_item_id: '',
-            item_title: '',
-            item_description: '',
-            image_url: '',
             customer_name: '',
             customer_phone: '',
             customer_email: '',
             delivery_address_line1: '',
             delivery_address_line2: '',
             delivery_city: '',
-            delivery_state: 'CA',
+            delivery_state: 'IN',
             delivery_zip: '',
             delivery_notes: '',
           });
         }, 2000);
       } else {
-        // For admin, navigate to task detail
         navigate(`/tasks/${response.data.id}`);
       }
     } catch (err) {
@@ -192,18 +201,13 @@ const CreateTask = () => {
   };
 
   const handleReset = () => {
-    setItemFound(false);
+    setItems([]);
     setSoldWarning(false);
     setSkuInput('');
-    setFormData(prev => ({
-      ...prev,
-      sku: '',
-      liberty_item_id: '',
-      item_title: '',
-      item_description: '',
-      image_url: '',
-    }));
+    setAddingMore(false);
   };
+
+  const hasItems = items.length > 0;
 
   return (
     <div className="create-task-new">
@@ -225,8 +229,8 @@ const CreateTask = () => {
       )}
 
       <div className="form-container-new">
-        {/* Step 1: Item Lookup */}
-        {!itemFound ? (
+        {/* Step 1: No items yet - show scan interface */}
+        {!hasItems ? (
           <div className="lookup-section">
             <div className="lookup-card">
               <div className="scan-icon">📦</div>
@@ -235,6 +239,7 @@ const CreateTask = () => {
               
               <form onSubmit={handleSkuLookup} className="lookup-form">
                 <input
+                  ref={skuInputRef}
                   type="text"
                   value={skuInput}
                   onChange={(e) => setSkuInput(e.target.value)}
@@ -257,32 +262,84 @@ const CreateTask = () => {
         ) : (
           <>
           <button type="button" onClick={handleReset} className="back-link">
-            ← Back to Scan
+            ← Start Over
           </button>
           
           {soldWarning && (
             <div className="warning-banner">
-              ⚠ Item shows as sold in Shopify — if you just sold it, proceed below
+              ⚠ One or more items show as sold in Shopify — if you just sold them, proceed below
             </div>
           )}
           
-          {/* Step 2: Item Found - Show Details & Customer Form */}
+          {/* Step 2: Items added - Show list & customer form */}
           <form onSubmit={handleSubmit} className="delivery-form">
-            {/* Item Preview */}
-            <div className="item-preview-card">
-              <div className="item-preview-header">
-                <div className="item-preview-info">
-                  {formData.image_url && (
-                    <img src={formData.image_url} alt={formData.item_title} className="item-preview-image" />
-                  )}
-                  <div>
-                    <h3>{formData.item_title}</h3>
-                    <p className="item-sku">SKU: {formData.sku}</p>
-                  </div>
+            {/* Items List */}
+            <div className="form-section-new">
+              <div className="section-header-with-action">
+                <h2>Items ({items.length})</h2>
+                {!addingMore && (
+                  <button 
+                    type="button" 
+                    className="btn-add-item"
+                    onClick={() => setAddingMore(true)}
+                  >
+                    + Add Another Item
+                  </button>
+                )}
+              </div>
+              
+              {/* Add More Items Input */}
+              {addingMore && (
+                <div className="add-item-inline">
+                  <input
+                    ref={skuInputRef}
+                    type="text"
+                    value={skuInput}
+                    onChange={(e) => setSkuInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Scan or enter SKU"
+                    className="sku-input-inline"
+                    disabled={lookingUp}
+                  />
+                  <button 
+                    type="button"
+                    className="btn-lookup-inline"
+                    onClick={handleSkuLookup}
+                    disabled={lookingUp || !skuInput.trim()}
+                  >
+                    {lookingUp ? '...' : 'Add'}
+                  </button>
+                  <button 
+                    type="button"
+                    className="btn-cancel-inline"
+                    onClick={() => { setAddingMore(false); setSkuInput(''); }}
+                  >
+                    Cancel
+                  </button>
                 </div>
-                <button type="button" onClick={handleReset} className="btn-change">
-                  Change Item
-                </button>
+              )}
+              
+              {/* Items Grid */}
+              <div className="items-list">
+                {items.map((item, index) => (
+                  <div key={index} className="item-card">
+                    {item.image_url && (
+                      <img src={item.image_url} alt={item.title} className="item-card-image" />
+                    )}
+                    <div className="item-card-info">
+                      <h4>{item.title}</h4>
+                      <p className="item-card-sku">SKU: {item.sku}</p>
+                    </div>
+                    <button 
+                      type="button" 
+                      className="item-remove-btn"
+                      onClick={() => removeItem(index)}
+                      title="Remove item"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -301,7 +358,6 @@ const CreateTask = () => {
                     onChange={handleChange}
                     placeholder="John Smith"
                     required
-                    autoFocus
                   />
                 </div>
 
@@ -313,7 +369,7 @@ const CreateTask = () => {
                     type="tel"
                     value={formData.customer_phone}
                     onChange={handleChange}
-                    placeholder="(555) 123-4567"
+                    placeholder="555-123-4567"
                     required
                   />
                 </div>
@@ -370,7 +426,7 @@ const CreateTask = () => {
                     type="text"
                     value={formData.delivery_city}
                     onChange={handleChange}
-                    placeholder="San Francisco"
+                    placeholder="Indianapolis"
                     required
                   />
                 </div>
@@ -396,7 +452,7 @@ const CreateTask = () => {
                     type="text"
                     value={formData.delivery_zip}
                     onChange={handleChange}
-                    placeholder="94102"
+                    placeholder="46201"
                     required
                   />
                 </div>
@@ -423,9 +479,9 @@ const CreateTask = () => {
               <button
                 type="submit"
                 className="btn-submit-new"
-                disabled={loading}
+                disabled={loading || items.length === 0}
               >
-                {loading ? 'Creating Delivery...' : 'Create Delivery'}
+                {loading ? 'Creating Delivery...' : `Create Delivery (${items.length} item${items.length > 1 ? 's' : ''})`}
               </button>
             </div>
           </form>

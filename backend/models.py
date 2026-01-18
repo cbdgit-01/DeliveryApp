@@ -61,12 +61,15 @@ class DeliveryTask(Base):
     shopify_order_id = Column(String, nullable=True, index=True)
     shopify_order_number = Column(String, nullable=True)
     
-    # Product information
+    # Product information (primary item for backwards compatibility)
     sku = Column(String, nullable=False, index=True)
     liberty_item_id = Column(String, nullable=False)
     item_title = Column(String, nullable=False)
     item_description = Column(Text, nullable=True)
     image_url = Column(String, nullable=True)
+    
+    # Multiple items support - JSON array of {sku, item_id, title, description, image_url}
+    items = Column(JSON, nullable=True)
     
     # Customer information
     customer_name = Column(String, nullable=False)
