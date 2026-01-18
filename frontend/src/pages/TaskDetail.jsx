@@ -487,7 +487,8 @@ const TaskDetail = () => {
             )}
           </div>
 
-          {canMarkDelivered && (
+          {/* Actions card - only show for statuses that have actions beyond scheduling */}
+          {canMarkDelivered && (task.status === 'scheduled' || task.status === 'delivered') && (
             <div className="card">
               <h2>Actions</h2>
               <div className="action-buttons">
@@ -516,24 +517,6 @@ const TaskDetail = () => {
                     disabled={updating}
                   >
                     💰 Payment Received
-                  </button>
-                )}
-                {task.status === 'pending' && (
-                  <button
-                    className="btn btn-primary btn-full"
-                    onClick={() => setShowScheduleForm(true)}
-                    disabled={updating}
-                  >
-                    Schedule Delivery
-                  </button>
-                )}
-                {task.status === 'cancelled' && (
-                  <button
-                    className="btn btn-primary btn-full"
-                    onClick={() => setShowScheduleForm(true)}
-                    disabled={updating}
-                  >
-                    Reschedule Delivery
                   </button>
                 )}
               </div>
