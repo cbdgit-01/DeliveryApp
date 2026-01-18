@@ -14,7 +14,7 @@ const CreateTask = () => {
   
   const [skuInput, setSkuInput] = useState('');
   const [itemFound, setItemFound] = useState(false);
-  const [recentlySold, setRecentlySold] = useState(false);
+  const [soldWarning, setSoldWarning] = useState(false);
 
   // Block keyboard shortcuts at document level to prevent scanner interference
   // POSX scanners send Ctrl+J which opens Downloads in Chrome/Firefox
@@ -70,23 +70,12 @@ const CreateTask = () => {
       const response = await itemsAPI.lookup(skuInput.trim());
       
       if (response.data.found) {
-        // Check availability
-        if (!response.data.available) {
-          const status = response.data.inventory_status;
-          const statusMsg = status?.status === 'sold' 
-            ? 'This item was sold more than an hour ago.' 
-            : 'This item is not available.';
-          setError(`${statusMsg} Please check the item and try again.`);
-          setItemFound(false);
-          setRecentlySold(false);
-          return;
-        }
-        
         const item = response.data.item;
         const status = response.data.inventory_status;
         
-        // Check if this was a recently sold item (sold within last hour)
-        setRecentlySold(status?.status === 'recently_sold');
+        // Show warning if item shows as sold/unavailable (but allow proceeding)
+        const isSold = !response.data.available || status?.status === 'sold' || status?.status === 'unavailable';
+        setSoldWarning(isSold);
         
         setFormData(prev => ({
           ...prev,
@@ -101,7 +90,7 @@ const CreateTask = () => {
       } else {
         setError(response.data.message || 'Item not found');
         setItemFound(false);
-        setRecentlySold(false);
+        setSoldWarning(false);
       }
     } catch (err) {
       console.error('Error looking up item:', err);
@@ -204,7 +193,7 @@ const CreateTask = () => {
 
   const handleReset = () => {
     setItemFound(false);
-    setRecentlySold(false);
+    setSoldWarning(false);
     setSkuInput('');
     setFormData(prev => ({
       ...prev,
@@ -271,9 +260,9 @@ const CreateTask = () => {
             ← Back to Scan
           </button>
           
-          {recentlySold && (
-            <div className="info-banner">
-              ✓ Item just sold — ready for delivery scheduling
+          {soldWarning && (
+            <div className="warning-banner">
+              ⚠ Item shows as sold in Shopify — if you just sold it, proceed below
             </div>
           )}
           

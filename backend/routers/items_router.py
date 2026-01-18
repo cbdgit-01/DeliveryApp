@@ -478,48 +478,24 @@ async def lookup_item(
         if item_data:
             # Check inventory availability
             inventory_qty = item_data.get('inventory_quantity')
-            product_id = item_data.get('shopify_product_id')
             
-            # Item found - check if it's available
+            # Determine availability status (for display purposes only - not blocking)
             if inventory_qty is not None and inventory_qty <= 0:
-                # Item shows as sold - check if it was sold recently (within 1 hour)
-                # This allows staff to scan items right after a sale
-                recently_sold = False
-                if product_id:
-                    recently_sold = await check_recent_sale(product_id, hours=1.0)
-                
-                if recently_sold:
-                    # Item was sold within the last hour - allow it!
-                    return {
-                        "found": True,
-                        "available": True,  # Allow it since it was just sold
-                        "item": item_data,
-                        "message": "Item was just sold - ready for delivery scheduling",
-                        "inventory_status": {
-                            "quantity": inventory_qty,
-                            "status": "recently_sold"
-                        }
-                    }
-                else:
-                    # Item was sold more than an hour ago
-                    return {
-                        "found": True,
-                        "available": False,
-                        "item": item_data,
-                        "message": "Item was sold more than an hour ago",
-                        "inventory_status": {
-                            "quantity": inventory_qty,
-                            "status": "sold"
-                        }
-                    }
+                status = "sold"
+                available = False
+            else:
+                status = "available"
+                available = True
             
+            # Always return found=True so frontend can proceed
+            # Frontend will show warning for sold items but allow user to continue
             return {
                 "found": True,
-                "available": True,
+                "available": available,
                 "item": item_data,
                 "inventory_status": {
                     "quantity": inventory_qty,
-                    "status": "available"
+                    "status": status
                 }
             }
     
