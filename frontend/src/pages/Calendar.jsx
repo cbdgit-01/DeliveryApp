@@ -1,21 +1,23 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
-import listPlugin from '@fullcalendar/list';
 import interactionPlugin, { Draggable } from '@fullcalendar/interaction';
 import { calendarAPI, tasksAPI, pickupsAPI } from '../services/api';
 import './Calendar.css';
 
 const Calendar = () => {
-  const calendarRef = useRef(null);
+  const monthCalendarRef = useRef(null);
+  const dayCalendarRef = useRef(null);
   const navigate = useNavigate();
   const [unscheduledDeliveries, setUnscheduledDeliveries] = useState([]);
   const [unscheduledPickups, setUnscheduledPickups] = useState([]);
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showEventModal, setShowEventModal] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(null); // When a day is clicked
+  const [currentMonth, setCurrentMonth] = useState(new Date());
   const deliveryDraggableRef = useRef(null);
   const pickupDraggableRef = useRef(null);
 
@@ -28,9 +30,9 @@ const Calendar = () => {
   const fetchCalendarEvents = async () => {
     try {
       const start = new Date();
-      start.setMonth(start.getMonth() - 1);
+      start.setMonth(start.getMonth() - 3);
       const end = new Date();
-      end.setMonth(end.getMonth() + 3);
+      end.setMonth(end.getMonth() + 6);
       
       const response = await calendarAPI.getEvents(start, end);
       const eventsWithStringIds = response.data.map(event => ({
@@ -61,8 +63,8 @@ const Calendar = () => {
           title: data.title,
           duration: '01:00:00',
           extendedProps: data.extendedProps,
-          backgroundColor: '#f97373',
-          borderColor: '#ef4444'
+          backgroundColor: '#ea4335',
+          borderColor: '#ea4335'
         };
       }
     });
@@ -92,8 +94,8 @@ const Calendar = () => {
           title: data.title,
           duration: '01:00:00',
           extendedProps: data.extendedProps,
-          backgroundColor: '#a78bfa',
-          borderColor: '#8b5cf6'
+          backgroundColor: '#9334ea',
+          borderColor: '#9334ea'
         };
       }
     });
@@ -123,9 +125,15 @@ const Calendar = () => {
     }
   };
 
+  // Click event in day view shows modal
   const handleEventClick = (clickInfo) => {
     setSelectedEvent(clickInfo.event);
     setShowEventModal(true);
+  };
+
+  // Click on a day in month view opens day view
+  const handleDateClick = (dateInfo) => {
+    setSelectedDate(dateInfo.date);
   };
 
   const toLocalISOString = (date) => {
@@ -145,7 +153,6 @@ const Calendar = () => {
     const startStr = toLocalISOString(newStart);
     const endStr = toLocalISOString(newEnd);
 
-    // Determine if this is a delivery or pickup
     const isPickup = eventId.startsWith('pickup-');
     const actualId = isPickup ? eventId.replace('pickup-', '') : eventId.replace('delivery-', '');
 
@@ -241,8 +248,8 @@ const Calendar = () => {
         title: eventInfo.event.title,
         start: startStr,
         end: endStr,
-        backgroundColor: isPickup ? '#a78bfa' : '#f97373',
-        borderColor: isPickup ? '#8b5cf6' : '#ef4444',
+        backgroundColor: isPickup ? '#9334ea' : '#ea4335',
+        borderColor: isPickup ? '#9334ea' : '#ea4335',
         extendedProps: eventInfo.event.extendedProps
       };
       setCalendarEvents(prev => [...prev, newEvent]);
@@ -322,38 +329,78 @@ const Calendar = () => {
   };
 
   const handleTodayClick = () => {
-    if (calendarRef.current) {
-      calendarRef.current.getApi().today();
+    if (selectedDate) {
+      setSelectedDate(new Date());
+    } else if (monthCalendarRef.current) {
+      monthCalendarRef.current.getApi().today();
     }
   };
 
-  const handlePrevClick = () => {
-    if (calendarRef.current) {
-      calendarRef.current.getApi().prev();
+  const closeDayView = () => {
+    setSelectedDate(null);
+  };
+
+  // Navigate day view
+  const navigateDay = (direction) => {
+    if (selectedDate) {
+      const newDate = new Date(selectedDate);
+      newDate.setDate(newDate.getDate() + direction);
+      setSelectedDate(newDate);
     }
   };
 
-  const handleNextClick = () => {
-    if (calendarRef.current) {
-      calendarRef.current.getApi().next();
+  // Handle scroll for navigation
+  const handleWheel = useCallback((e) => {
+    // Only trigger on significant scroll
+    if (Math.abs(e.deltaY) < 50) return;
+    
+    const direction = e.deltaY > 0 ? 1 : -1;
+    
+    if (selectedDate) {
+      // Day view - navigate days
+      navigateDay(direction);
+    } else if (monthCalendarRef.current) {
+      // Month view - navigate months
+      const api = monthCalendarRef.current.getApi();
+      if (direction > 0) {
+        api.next();
+      } else {
+        api.prev();
+      }
     }
+  }, [selectedDate]);
+
+  // Format selected date for display
+  const formatSelectedDate = (date) => {
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  // Get events for the selected day
+  const getDayEvents = () => {
+    if (!selectedDate) return [];
+    const dayStart = new Date(selectedDate);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(selectedDate);
+    dayEnd.setHours(23, 59, 59, 999);
+    
+    return calendarEvents.filter(event => {
+      const eventStart = new Date(event.start);
+      return eventStart >= dayStart && eventStart <= dayEnd;
+    });
   };
 
   return (
-    <div className="calendar-page">
+    <div className="calendar-page" onWheel={handleWheel}>
       <div className="calendar-header">
         <h1>Calendar</h1>
-        <div className="calendar-nav">
-          <button className="btn btn-secondary" onClick={handlePrevClick}>
-            ← Prev
-          </button>
-          <button className="btn btn-secondary" onClick={handleTodayClick}>
-            Today
-          </button>
-          <button className="btn btn-secondary" onClick={handleNextClick}>
-            Next →
-          </button>
-        </div>
+        <button className="btn btn-secondary today-btn" onClick={handleTodayClick}>
+          Today
+        </button>
       </div>
 
       <div className="calendar-container">
@@ -417,54 +464,88 @@ const Calendar = () => {
           </div>
         </div>
 
-        <div className="calendar-wrapper">
-          <FullCalendar
-            ref={calendarRef}
-            plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
-            initialView="dayGridMonth"
-            headerToolbar={{
-              left: '',
-              center: 'title',
-              right: 'dayGridMonth,timeGridDay,listWeek',
-            }}
-            views={{
-              dayGridMonth: {
-                titleFormat: { year: 'numeric', month: 'long' },
-                dayMaxEventRows: 4,
-              },
-              timeGridDay: {
-                titleFormat: { year: 'numeric', month: 'long', day: 'numeric' },
-              },
-            }}
-            height="calc(100vh - 160px)"
-            contentHeight="auto"
-            events={calendarEvents}
-            eventClick={handleEventClick}
-            eventDrop={handleEventDrop}
-            eventResize={handleEventResize}
-            eventReceive={handleEventReceive}
-            editable={true}
-            droppable={true}
-            dayMaxEvents={true}
-            weekends={true}
-            slotMinTime="06:00:00"
-            slotMaxTime="22:00:00"
-            slotDuration="00:30:00"
-            snapDuration="00:15:00"
-            allDaySlot={false}
-            eventDurationEditable={true}
-            eventOverlap={true}
-            dropAccept=".unscheduled-item"
-            nowIndicator={true}
-            eventTimeFormat={{
-              hour: 'numeric',
-              minute: '2-digit',
-              meridiem: 'short',
-            }}
-            eventResizableFromStart={true}
-            expandRows={true}
-            handleWindowResize={true}
-          />
+        <div className="calendar-main">
+          {/* Month View */}
+          {!selectedDate && (
+            <div className="calendar-wrapper month-view">
+              <FullCalendar
+                ref={monthCalendarRef}
+                plugins={[dayGridPlugin, interactionPlugin]}
+                initialView="dayGridMonth"
+                headerToolbar={{
+                  left: '',
+                  center: 'title',
+                  right: '',
+                }}
+                titleFormat={{ year: 'numeric', month: 'long' }}
+                height="calc(100vh - 160px)"
+                events={calendarEvents}
+                dateClick={handleDateClick}
+                eventClick={handleEventClick}
+                eventDrop={handleEventDrop}
+                eventReceive={handleEventReceive}
+                editable={true}
+                droppable={true}
+                dayMaxEventRows={3}
+                weekends={true}
+                dropAccept=".unscheduled-item"
+                eventDisplay="block"
+                eventTimeFormat={{
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  meridiem: 'short',
+                }}
+              />
+            </div>
+          )}
+
+          {/* Day View */}
+          {selectedDate && (
+            <div className="calendar-wrapper day-view">
+              <div className="day-view-header">
+                <button className="btn-back-day" onClick={closeDayView}>
+                  ← Back to Month
+                </button>
+                <h2>{formatSelectedDate(selectedDate)}</h2>
+                <div className="day-nav">
+                  <button className="day-nav-btn" onClick={() => navigateDay(-1)}>←</button>
+                  <button className="day-nav-btn" onClick={() => navigateDay(1)}>→</button>
+                </div>
+              </div>
+              <FullCalendar
+                ref={dayCalendarRef}
+                key={selectedDate.toISOString()} // Force re-render on date change
+                plugins={[timeGridPlugin, interactionPlugin]}
+                initialView="timeGridDay"
+                initialDate={selectedDate}
+                headerToolbar={false}
+                height="calc(100vh - 220px)"
+                events={calendarEvents}
+                eventClick={handleEventClick}
+                eventDrop={handleEventDrop}
+                eventResize={handleEventResize}
+                eventReceive={handleEventReceive}
+                editable={true}
+                droppable={true}
+                slotMinTime="06:00:00"
+                slotMaxTime="22:00:00"
+                slotDuration="00:30:00"
+                snapDuration="00:15:00"
+                allDaySlot={false}
+                eventDurationEditable={true}
+                eventOverlap={true}
+                dropAccept=".unscheduled-item"
+                nowIndicator={true}
+                eventTimeFormat={{
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  meridiem: 'short',
+                }}
+                eventResizableFromStart={true}
+                expandRows={true}
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -474,7 +555,7 @@ const Calendar = () => {
             <div className="modal-header">
               <h2>{selectedEvent.title}</h2>
               <button className="modal-close" onClick={closeModal}>
-                ✕
+                ×
               </button>
             </div>
             <div className="modal-body">
@@ -549,7 +630,6 @@ const Calendar = () => {
               <button 
                 className="btn btn-secondary" 
                 onClick={handleUnschedule}
-                style={{ marginBottom: '8px' }}
               >
                 Remove from Schedule
               </button>

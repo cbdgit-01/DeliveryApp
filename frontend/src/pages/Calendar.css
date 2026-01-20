@@ -18,14 +18,9 @@
   letter-spacing: -0.01em;
 }
 
-.calendar-nav {
-  display: flex;
-  gap: 4px;
-}
-
-.calendar-nav .btn {
-  padding: 8px 16px;
-  font-size: var(--font-size-xs);
+.today-btn {
+  padding: 8px 20px;
+  font-size: var(--font-size-sm);
   font-weight: 500;
   border-radius: var(--radius-sm);
 }
@@ -128,7 +123,11 @@
   font-size: var(--font-size-xs);
 }
 
-/* Calendar Wrapper - Google Style */
+/* Main Calendar Area */
+.calendar-main {
+  flex: 1;
+}
+
 .calendar-wrapper {
   background: var(--bg-card);
   border-radius: var(--radius-lg);
@@ -146,6 +145,67 @@
 }
 
 /* ========================================
+   DAY VIEW HEADER
+   ======================================== */
+
+.day-view-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-default);
+  background: var(--bg-card);
+}
+
+.day-view-header h2 {
+  font-size: var(--font-size-lg);
+  font-weight: 500;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.btn-back-day {
+  background: transparent;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-back-day:hover {
+  background: var(--bg-main);
+  color: var(--text-primary);
+}
+
+.day-nav {
+  display: flex;
+  gap: 4px;
+}
+
+.day-nav-btn {
+  background: transparent;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.day-nav-btn:hover {
+  background: var(--bg-main);
+  color: var(--text-primary);
+}
+
+/* ========================================
    FULLCALENDAR - GOOGLE CALENDAR STYLE
    ======================================== */
 
@@ -157,63 +217,21 @@
 /* Header Toolbar */
 .fc-header-toolbar {
   margin: 0 !important;
-  padding: 12px 16px !important;
+  padding: 16px 20px !important;
   background: var(--bg-card);
   border-bottom: 1px solid var(--border-default);
 }
 
 .fc-toolbar-title {
-  font-size: 18px !important;
+  font-size: 20px !important;
   font-weight: 500 !important;
   color: var(--text-primary) !important;
 }
 
-/* Buttons - Google Style */
+/* Hide default buttons - we use our own */
+.fc-button-group,
 .fc-button {
-  background: transparent !important;
-  border: 1px solid var(--border-default) !important;
-  color: var(--text-secondary) !important;
-  font-weight: 500 !important;
-  padding: 6px 12px !important;
-  border-radius: 4px !important;
-  font-size: 13px !important;
-  text-transform: none !important;
-  box-shadow: none !important;
-  transition: all 0.15s ease !important;
-}
-
-.fc-button:hover {
-  background: var(--bg-main) !important;
-  color: var(--text-primary) !important;
-}
-
-.fc-button:focus {
-  box-shadow: none !important;
-}
-
-.fc-button-active,
-.fc-button:active {
-  background: var(--bg-main) !important;
-  color: var(--text-primary) !important;
-  border-color: var(--border-default) !important;
-}
-
-.fc-button-group {
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.fc-button-group .fc-button {
-  border-radius: 0 !important;
-  margin: 0 !important;
-}
-
-.fc-button-group .fc-button:first-child {
-  border-radius: 4px 0 0 4px !important;
-}
-
-.fc-button-group .fc-button:last-child {
-  border-radius: 0 4px 4px 0 !important;
+  display: none !important;
 }
 
 /* Column Headers */
@@ -222,7 +240,7 @@
 }
 
 .fc-col-header-cell {
-  padding: 8px 0 !important;
+  padding: 12px 0 !important;
   font-weight: 500 !important;
   font-size: 11px !important;
   text-transform: uppercase !important;
@@ -240,10 +258,15 @@
 .fc-daygrid-day,
 .fc-timegrid-col {
   background: var(--bg-card) !important;
+  cursor: pointer;
+}
+
+.fc-daygrid-day:hover {
+  background: var(--bg-main) !important;
 }
 
 .fc-day-today {
-  background: rgba(66, 133, 244, 0.04) !important;
+  background: rgba(66, 133, 244, 0.06) !important;
 }
 
 .fc-daygrid-day-number {
@@ -266,7 +289,7 @@
   font-weight: 500 !important;
 }
 
-/* Time Grid */
+/* Time Grid (Day View) */
 .fc-timegrid-slot {
   height: 48px !important;
   border-color: var(--border-subtle) !important;
@@ -278,15 +301,15 @@
 
 .fc-timegrid-slot-label {
   color: var(--text-muted) !important;
-  font-size: 10px !important;
+  font-size: 11px !important;
   font-weight: 400 !important;
-  padding-right: 8px !important;
+  padding-right: 12px !important;
 }
 
 .fc-timegrid-axis {
   background: var(--bg-card) !important;
   border-color: var(--border-default) !important;
-  width: 56px !important;
+  width: 60px !important;
 }
 
 /* Current Time Indicator - Google Red Line */
@@ -301,11 +324,14 @@
   border-bottom-color: transparent !important;
 }
 
-/* Events - Google Style Pills */
+/* ========================================
+   EVENTS - COLORED BARS
+   ======================================== */
+
 .fc-event {
   border-radius: 4px !important;
   border: none !important;
-  padding: 2px 6px !important;
+  padding: 2px 8px !important;
   cursor: pointer !important;
   font-size: 12px !important;
   font-weight: 500 !important;
@@ -322,6 +348,7 @@
   font-size: 12px !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
+  white-space: nowrap !important;
 }
 
 .fc-event-time {
@@ -330,6 +357,33 @@
   opacity: 0.9 !important;
 }
 
+/* Month view events - display as full bars */
+.fc-daygrid-event {
+  margin: 2px 4px !important;
+  border-radius: 4px !important;
+  padding: 3px 8px !important;
+}
+
+.fc-daygrid-event-harness {
+  margin-bottom: 2px !important;
+}
+
+/* Hide dots - show colored bars instead */
+.fc-daygrid-event-dot {
+  display: none !important;
+}
+
+/* Make dot events look like bar events */
+.fc-daygrid-dot-event {
+  padding: 4px 8px !important;
+  border-radius: 4px !important;
+}
+
+.fc-daygrid-dot-event .fc-event-title {
+  font-weight: 500 !important;
+}
+
+/* Time grid events (day view) */
 .fc-timegrid-event {
   border-radius: 4px !important;
   padding: 4px 8px !important;
@@ -337,6 +391,33 @@
 
 .fc-timegrid-event .fc-event-main {
   padding: 2px 0 !important;
+}
+
+/* Day Grid */
+.fc-daygrid-body {
+  background: var(--bg-card) !important;
+}
+
+.fc-daygrid-day-frame {
+  min-height: 120px !important;
+}
+
+.fc-daygrid-day-events {
+  padding: 2px 4px !important;
+}
+
+/* More link */
+.fc-daygrid-more-link {
+  color: var(--text-muted) !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  padding: 2px 4px !important;
+}
+
+.fc-daygrid-more-link:hover {
+  color: var(--text-primary) !important;
+  background: var(--bg-main) !important;
+  border-radius: 4px !important;
 }
 
 /* Borders */
@@ -351,117 +432,6 @@
 
 .fc-scrollgrid-sync-inner {
   background: var(--bg-card) !important;
-}
-
-/* Day Grid - Google Calendar Month View */
-.fc-daygrid-body {
-  background: var(--bg-card) !important;
-}
-
-.fc-daygrid-day-frame {
-  min-height: 120px !important;
-}
-
-.fc-daygrid-day-events {
-  padding: 2px 4px !important;
-}
-
-.fc-daygrid-event {
-  margin: 2px 4px !important;
-  border-radius: 4px !important;
-  padding: 2px 8px !important;
-  font-size: 12px !important;
-  font-weight: 500 !important;
-  cursor: pointer !important;
-}
-
-/* Make events display as full-width bars in month view */
-.fc-daygrid-event-harness {
-  margin-bottom: 2px !important;
-}
-
-.fc-daygrid-dot-event {
-  display: flex !important;
-  align-items: center !important;
-  padding: 4px 8px !important;
-  background: var(--bg-main) !important;
-  border-radius: 4px !important;
-}
-
-.fc-daygrid-dot-event .fc-event-title {
-  font-weight: 500 !important;
-  flex: 1 !important;
-}
-
-/* Remove dots - use colored bar instead */
-.fc-daygrid-event-dot {
-  display: none !important;
-}
-
-/* Color the entire event bar */
-.fc-daygrid-dot-event.fc-event {
-  background-color: inherit !important;
-  border: none !important;
-}
-
-/* List View - Google Style */
-.fc-list {
-  border-color: var(--border-default) !important;
-}
-
-.fc-list-day-cushion {
-  background: var(--bg-main) !important;
-  color: var(--text-primary) !important;
-  padding: 12px 16px !important;
-  font-weight: 500 !important;
-}
-
-.fc-list-event {
-  background: transparent !important;
-}
-
-.fc-list-event:hover td {
-  background: var(--bg-main) !important;
-}
-
-.fc-list-event td {
-  background: transparent !important;
-  color: var(--text-primary) !important;
-  border-color: var(--border-subtle) !important;
-  padding: 12px 16px !important;
-}
-
-.fc-list-event-time {
-  color: var(--text-muted) !important;
-  font-size: 13px !important;
-}
-
-.fc-list-event-title {
-  color: var(--text-primary) !important;
-  font-weight: 500 !important;
-}
-
-.fc-list-event-dot {
-  border: none !important;
-  width: 10px !important;
-  height: 10px !important;
-  border-radius: 50% !important;
-}
-
-.fc-list-empty {
-  background: var(--bg-card) !important;
-  color: var(--text-muted) !important;
-}
-
-/* More link */
-.fc-daygrid-more-link {
-  color: var(--text-muted) !important;
-  font-size: 11px !important;
-  font-weight: 500 !important;
-}
-
-.fc-daygrid-more-link:hover {
-  color: var(--text-primary) !important;
 }
 
 /* ========================================
@@ -509,7 +479,7 @@
 .modal-close {
   background: none;
   border: none;
-  font-size: 20px;
+  font-size: 24px;
   cursor: pointer;
   color: var(--text-dim);
   padding: 4px;
@@ -583,12 +553,11 @@
   padding: 16px 20px;
   border-top: 1px solid var(--border-subtle);
   display: flex;
-  flex-direction: column;
   gap: 8px;
 }
 
 .modal-footer .btn {
-  width: 100%;
+  flex: 1;
   padding: 10px 16px;
   font-size: 13px;
   border-radius: 6px;
@@ -623,22 +592,28 @@
     gap: 12px;
   }
 
-  .calendar-nav {
-    justify-content: space-between;
+  .today-btn {
+    width: 100%;
   }
 
   .unscheduled-sidebar {
     grid-template-columns: 1fr;
   }
 
-  .fc-header-toolbar {
-    flex-direction: column;
-    gap: 8px;
+  .day-view-header {
+    flex-wrap: wrap;
+    gap: 12px;
   }
 
-  .fc-toolbar-chunk {
-    display: flex;
-    justify-content: center;
+  .day-view-header h2 {
+    order: 3;
+    width: 100%;
+    text-align: center;
+    font-size: var(--font-size-md);
+  }
+
+  .modal-footer {
+    flex-direction: column;
   }
 }
 
@@ -662,4 +637,6 @@
   box-shadow: 0 24px 48px rgba(0, 0, 0, 0.15);
 }
 
-
+[data-theme="light"] .fc-daygrid-day:hover {
+  background: #f8f9fa !important;
+}
