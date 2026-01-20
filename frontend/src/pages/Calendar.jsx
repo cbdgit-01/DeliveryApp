@@ -17,14 +17,17 @@ const Calendar = () => {
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showEventModal, setShowEventModal] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(null); // When a day is clicked
+  const [selectedDate, setSelectedDate] = useState(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
   const deliveryDraggableRef = useRef(null);
   const pickupDraggableRef = useRef(null);
   
   // Touch/swipe tracking
   const touchStartX = useRef(null);
   const touchStartY = useRef(null);
+  const isSwiping = useRef(false);
 
   useEffect(() => {
     fetchUnscheduledDeliveries();
@@ -354,42 +357,75 @@ const Calendar = () => {
     }
   };
 
-  // Touch/swipe handlers for mobile navigation
+  // Touch/swipe handlers for mobile navigation with continuous drag
   const handleTouchStart = useCallback((e) => {
+    if (isAnimating) return;
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
-  }, []);
+    isSwiping.current = false;
+  }, [isAnimating]);
+
+  const handleTouchMove = useCallback((e) => {
+    if (touchStartX.current === null || isAnimating) return;
+    
+    const touchCurrentX = e.touches[0].clientX;
+    const touchCurrentY = e.touches[0].clientY;
+    const deltaX = touchCurrentX - touchStartX.current;
+    const deltaY = touchCurrentY - touchStartY.current;
+    
+    // Only track horizontal swipes
+    if (!isSwiping.current && Math.abs(deltaX) > 10 && Math.abs(deltaX) > Math.abs(deltaY)) {
+      isSwiping.current = true;
+    }
+    
+    if (isSwiping.current) {
+      // Limit the offset and add resistance at edges
+      const maxOffset = 150;
+      const resistance = 0.4;
+      let offset = deltaX * resistance;
+      offset = Math.max(-maxOffset, Math.min(maxOffset, offset));
+      setSwipeOffset(offset);
+    }
+  }, [isAnimating]);
 
   const handleTouchEnd = useCallback((e) => {
     if (touchStartX.current === null) return;
     
     const touchEndX = e.changedTouches[0].clientX;
-    const touchEndY = e.changedTouches[0].clientY;
     const deltaX = touchEndX - touchStartX.current;
-    const deltaY = touchEndY - touchStartY.current;
     
-    // Only trigger if horizontal swipe is significant and more horizontal than vertical
+    // Animate back or navigate
     const minSwipeDistance = 50;
-    if (Math.abs(deltaX) > minSwipeDistance && Math.abs(deltaX) > Math.abs(deltaY)) {
+    if (isSwiping.current && Math.abs(deltaX) > minSwipeDistance) {
       const direction = deltaX > 0 ? -1 : 1; // Swipe left = next, swipe right = prev
       
-      if (selectedDate) {
-        // Day view - navigate days
-        navigateDay(direction);
-      } else if (monthCalendarRef.current) {
-        // Month view - navigate months
-        const api = monthCalendarRef.current.getApi();
-        if (direction > 0) {
-          api.next();
-        } else {
-          api.prev();
+      // Animate the transition
+      setIsAnimating(true);
+      setSwipeOffset(direction > 0 ? -300 : 300);
+      
+      setTimeout(() => {
+        if (selectedDate) {
+          navigateDay(direction);
+        } else if (monthCalendarRef.current) {
+          const api = monthCalendarRef.current.getApi();
+          if (direction > 0) {
+            api.next();
+          } else {
+            api.prev();
+          }
         }
-      }
+        setSwipeOffset(0);
+        setIsAnimating(false);
+      }, 200);
+    } else {
+      // Snap back
+      setSwipeOffset(0);
     }
     
     touchStartX.current = null;
     touchStartY.current = null;
-  }, [selectedDate]);
+    isSwiping.current = false;
+  }, [selectedDate, isAnimating]);
 
   // Format selected date for display
   const formatSelectedDate = (date) => {
@@ -420,6 +456,7 @@ const Calendar = () => {
       className="calendar-page" 
       ref={calendarPageRef}
       onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
       <div className="calendar-header">
@@ -427,9 +464,6 @@ const Calendar = () => {
           <h1>Calendar</h1>
           <span className="swipe-hint-header">Swipe to change month</span>
         </div>
-        <button className="btn btn-secondary today-btn" onClick={handleTodayClick}>
-          Today
-        </button>
       </div>
 
       <div className="calendar-container">
@@ -496,7 +530,13 @@ const Calendar = () => {
         <div className="calendar-main">
           {/* Month View */}
           {!selectedDate && (
-            <div className="calendar-wrapper month-view">
+            <div 
+              className="calendar-wrapper month-view"
+              style={{
+                transform: `translateX(${swipeOffset}px)`,
+                transition: isAnimating ? 'transform 0.2s ease-out' : 'none'
+              }}
+            >
               <FullCalendar
                 ref={monthCalendarRef}
                 plugins={[dayGridPlugin, interactionPlugin]}
@@ -530,7 +570,13 @@ const Calendar = () => {
 
           {/* Day View */}
           {selectedDate && (
-            <div className="calendar-wrapper day-view">
+            <div 
+              className="calendar-wrapper day-view"
+              style={{
+                transform: `translateX(${swipeOffset}px)`,
+                transition: isAnimating ? 'transform 0.2s ease-out' : 'none'
+              }}
+            >
               <div className="day-view-header">
                 <button className="btn-back-day" onClick={closeDayView}>
                   ← Back to Month
