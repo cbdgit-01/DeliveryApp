@@ -57,8 +57,8 @@ def get_calendar_events(
         
         bg_color, border_color = get_event_color(task.status)
         
-        # Format title with type indicator
-        title = f"🚚 {task.customer_name} – {task.item_title}"
+        # Format title - just customer name for cleaner display
+        title = task.customer_name
         
         # Build extended props
         extended_props = {
@@ -97,8 +97,8 @@ def get_calendar_events(
         
         bg_color, border_color = get_pickup_event_color(pickup.status)
         
-        # Format title with type indicator
-        title = f"📥 {pickup.customer_name} – Pickup"
+        # Format title - just customer name for cleaner display
+        title = pickup.customer_name
         
         # Build extended props
         extended_props = {
@@ -141,7 +141,7 @@ def get_unscheduled_tasks(
     for task in tasks:
         unscheduled.append({
             "id": f"delivery-{task.id}",
-            "title": f"{task.customer_name} – {task.item_title}",
+            "title": task.customer_name,
             "duration": "01:00",  # Default 1 hour duration
             "extendedProps": {
                 "type": "delivery",
@@ -170,7 +170,7 @@ def get_unscheduled_pickups(
     for pickup in pickups:
         unscheduled.append({
             "id": f"pickup-{pickup.id}",
-            "title": f"{pickup.customer_name} – Pickup ({pickup.item_count} items)",
+            "title": pickup.customer_name,
             "duration": "01:00",  # Default 1 hour duration
             "extendedProps": {
                 "type": "pickup",

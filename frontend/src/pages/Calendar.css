@@ -11,11 +11,18 @@
   padding: 0 4px;
 }
 
-.calendar-header h1 {
+.calendar-title h1 {
   font-size: var(--font-size-xl);
   color: var(--text-primary);
   font-weight: 500;
   letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.swipe-hint-header {
+  font-size: var(--font-size-xxs);
+  color: var(--text-muted);
+  display: block;
 }
 
 .today-btn {
@@ -155,13 +162,26 @@
   padding: 16px 20px;
   border-bottom: 1px solid var(--border-default);
   background: var(--bg-card);
+  gap: 16px;
 }
 
-.day-view-header h2 {
+.day-view-title {
+  flex: 1;
+  text-align: center;
+}
+
+.day-view-title h2 {
   font-size: var(--font-size-lg);
   font-weight: 500;
   color: var(--text-primary);
   margin: 0;
+}
+
+.swipe-hint {
+  font-size: var(--font-size-xxs);
+  color: var(--text-muted);
+  display: block;
+  margin-top: 2px;
 }
 
 .btn-back-day {
@@ -173,34 +193,10 @@
   color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.15s ease;
+  white-space: nowrap;
 }
 
 .btn-back-day:hover {
-  background: var(--bg-main);
-  color: var(--text-primary);
-}
-
-.day-nav {
-  display: flex;
-  gap: 4px;
-}
-
-.day-nav-btn {
-  background: transparent;
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-sm);
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.day-nav-btn:hover {
   background: var(--bg-main);
   color: var(--text-primary);
 }
@@ -357,15 +353,16 @@
   opacity: 0.9 !important;
 }
 
-/* Month view events - display as full bars */
+/* Month view events - display as full colored bars */
 .fc-daygrid-event {
   margin: 2px 4px !important;
   border-radius: 4px !important;
-  padding: 3px 8px !important;
+  padding: 4px 10px !important;
+  font-size: 13px !important;
 }
 
 .fc-daygrid-event-harness {
-  margin-bottom: 2px !important;
+  margin-bottom: 3px !important;
 }
 
 /* Hide dots - show colored bars instead */
@@ -375,12 +372,23 @@
 
 /* Make dot events look like bar events */
 .fc-daygrid-dot-event {
-  padding: 4px 8px !important;
+  padding: 4px 10px !important;
   border-radius: 4px !important;
+  background: inherit !important;
 }
 
 .fc-daygrid-dot-event .fc-event-title {
   font-weight: 500 !important;
+  font-size: 13px !important;
+}
+
+/* Event title styling - show customer name prominently */
+.fc-event-title-container {
+  font-weight: 500 !important;
+}
+
+.fc-event-title {
+  padding: 0 !important;
 }
 
 /* Time grid events (day view) */
@@ -393,17 +401,22 @@
   padding: 2px 0 !important;
 }
 
-/* Day Grid */
+/* Day Grid - Make days wider */
 .fc-daygrid-body {
   background: var(--bg-card) !important;
 }
 
 .fc-daygrid-day-frame {
-  min-height: 120px !important;
+  min-height: 140px !important;
 }
 
 .fc-daygrid-day-events {
-  padding: 2px 4px !important;
+  padding: 4px 6px !important;
+}
+
+/* Make the calendar grid cells wider */
+.fc .fc-daygrid-body-unbalanced .fc-daygrid-day-events {
+  min-height: 80px !important;
 }
 
 /* More link */

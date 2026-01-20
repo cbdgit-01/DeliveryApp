@@ -10,6 +10,7 @@ import './Calendar.css';
 const Calendar = () => {
   const monthCalendarRef = useRef(null);
   const dayCalendarRef = useRef(null);
+  const calendarPageRef = useRef(null);
   const navigate = useNavigate();
   const [unscheduledDeliveries, setUnscheduledDeliveries] = useState([]);
   const [unscheduledPickups, setUnscheduledPickups] = useState([]);
@@ -20,6 +21,10 @@ const Calendar = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const deliveryDraggableRef = useRef(null);
   const pickupDraggableRef = useRef(null);
+  
+  // Touch/swipe tracking
+  const touchStartX = useRef(null);
+  const touchStartY = useRef(null);
 
   useEffect(() => {
     fetchUnscheduledDeliveries();
@@ -349,25 +354,41 @@ const Calendar = () => {
     }
   };
 
-  // Handle scroll for navigation
-  const handleWheel = useCallback((e) => {
-    // Only trigger on significant scroll
-    if (Math.abs(e.deltaY) < 50) return;
+  // Touch/swipe handlers for mobile navigation
+  const handleTouchStart = useCallback((e) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  }, []);
+
+  const handleTouchEnd = useCallback((e) => {
+    if (touchStartX.current === null) return;
     
-    const direction = e.deltaY > 0 ? 1 : -1;
+    const touchEndX = e.changedTouches[0].clientX;
+    const touchEndY = e.changedTouches[0].clientY;
+    const deltaX = touchEndX - touchStartX.current;
+    const deltaY = touchEndY - touchStartY.current;
     
-    if (selectedDate) {
-      // Day view - navigate days
-      navigateDay(direction);
-    } else if (monthCalendarRef.current) {
-      // Month view - navigate months
-      const api = monthCalendarRef.current.getApi();
-      if (direction > 0) {
-        api.next();
-      } else {
-        api.prev();
+    // Only trigger if horizontal swipe is significant and more horizontal than vertical
+    const minSwipeDistance = 50;
+    if (Math.abs(deltaX) > minSwipeDistance && Math.abs(deltaX) > Math.abs(deltaY)) {
+      const direction = deltaX > 0 ? -1 : 1; // Swipe left = next, swipe right = prev
+      
+      if (selectedDate) {
+        // Day view - navigate days
+        navigateDay(direction);
+      } else if (monthCalendarRef.current) {
+        // Month view - navigate months
+        const api = monthCalendarRef.current.getApi();
+        if (direction > 0) {
+          api.next();
+        } else {
+          api.prev();
+        }
       }
     }
+    
+    touchStartX.current = null;
+    touchStartY.current = null;
   }, [selectedDate]);
 
   // Format selected date for display
@@ -395,9 +416,17 @@ const Calendar = () => {
   };
 
   return (
-    <div className="calendar-page" onWheel={handleWheel}>
+    <div 
+      className="calendar-page" 
+      ref={calendarPageRef}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       <div className="calendar-header">
-        <h1>Calendar</h1>
+        <div className="calendar-title">
+          <h1>Calendar</h1>
+          <span className="swipe-hint-header">Swipe to change month</span>
+        </div>
         <button className="btn btn-secondary today-btn" onClick={handleTodayClick}>
           Today
         </button>
@@ -506,10 +535,9 @@ const Calendar = () => {
                 <button className="btn-back-day" onClick={closeDayView}>
                   ← Back to Month
                 </button>
-                <h2>{formatSelectedDate(selectedDate)}</h2>
-                <div className="day-nav">
-                  <button className="day-nav-btn" onClick={() => navigateDay(-1)}>←</button>
-                  <button className="day-nav-btn" onClick={() => navigateDay(1)}>→</button>
+                <div className="day-view-title">
+                  <h2>{formatSelectedDate(selectedDate)}</h2>
+                  <span className="swipe-hint">Swipe to change day</span>
                 </div>
               </div>
               <FullCalendar
