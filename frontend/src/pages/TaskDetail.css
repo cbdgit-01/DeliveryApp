@@ -40,6 +40,18 @@
   border-color: var(--text-dim);
 }
 
+/* Header actions */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-edit {
+  padding: 6px 14px !important;
+  font-size: var(--font-size-xs) !important;
+}
+
 /* 3-dot menu */
 .header-menu {
   position: relative;
@@ -456,5 +468,102 @@
   .multi-item-image {
     width: 80px;
     height: 80px;
+  }
+}
+
+/* ========================================
+   EDIT FORM STYLES
+   ======================================== */
+
+.edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.edit-form .card {
+  margin-bottom: 0;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.form-grid .form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.edit-form .form-group label {
+  display: block;
+  font-size: var(--font-size-xxs);
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.edit-form .form-group input,
+.edit-form .form-group textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-main);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.edit-form .form-group input:focus,
+.edit-form .form-group textarea:focus {
+  outline: none;
+  border-color: var(--text-muted);
+  box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.1);
+}
+
+.edit-form .form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 8px;
+}
+
+.edit-actions .btn {
+  padding: 10px 20px;
+}
+
+/* Light mode edit form */
+[data-theme="light"] .edit-form .form-group input,
+[data-theme="light"] .edit-form .form-group textarea {
+  background: #ffffff;
+  border-color: #d1d5db;
+}
+
+[data-theme="light"] .edit-form .form-group input:focus,
+[data-theme="light"] .edit-form .form-group textarea:focus {
+  border-color: #1a73e8;
+  box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.15);
+}
+
+@media (max-width: 768px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .edit-actions {
+    flex-direction: column-reverse;
+  }
+  
+  .edit-actions .btn {
+    width: 100%;
   }
 }

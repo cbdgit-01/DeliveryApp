@@ -248,8 +248,8 @@
 
 .fc-daygrid-day-number {
   color: var(--text-primary) !important;
-  font-size: 13px !important;
-  padding: 8px !important;
+  font-size: 14px !important;
+  padding: 8px 12px !important;
   font-weight: 400 !important;
 }
 
@@ -257,8 +257,8 @@
   background: #1a73e8 !important;
   color: white !important;
   border-radius: 50% !important;
-  width: 28px !important;
-  height: 28px !important;
+  width: 32px !important;
+  height: 32px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -353,21 +353,55 @@
   background: var(--bg-card) !important;
 }
 
-/* Day Grid */
+/* Day Grid - Google Calendar Month View */
 .fc-daygrid-body {
   background: var(--bg-card) !important;
 }
 
 .fc-daygrid-day-frame {
-  min-height: 100px !important;
+  min-height: 120px !important;
 }
 
 .fc-daygrid-day-events {
-  padding: 0 4px !important;
+  padding: 2px 4px !important;
 }
 
 .fc-daygrid-event {
-  margin: 1px 2px !important;
+  margin: 2px 4px !important;
+  border-radius: 4px !important;
+  padding: 2px 8px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+}
+
+/* Make events display as full-width bars in month view */
+.fc-daygrid-event-harness {
+  margin-bottom: 2px !important;
+}
+
+.fc-daygrid-dot-event {
+  display: flex !important;
+  align-items: center !important;
+  padding: 4px 8px !important;
+  background: var(--bg-main) !important;
+  border-radius: 4px !important;
+}
+
+.fc-daygrid-dot-event .fc-event-title {
+  font-weight: 500 !important;
+  flex: 1 !important;
+}
+
+/* Remove dots - use colored bar instead */
+.fc-daygrid-event-dot {
+  display: none !important;
+}
+
+/* Color the entire event bar */
+.fc-daygrid-dot-event.fc-event {
+  background-color: inherit !important;
+  border: none !important;
 }
 
 /* List View - Google Style */
@@ -627,4 +661,5 @@
 [data-theme="light"] .modal-content {
   box-shadow: 0 24px 48px rgba(0, 0, 0, 0.15);
 }
+
 

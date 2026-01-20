@@ -376,7 +376,7 @@ const Calendar = () => {
                     })}
                   >
                     <div className="unscheduled-title">{task.title}</div>
-                    <div className="unscheduled-sku">SKU: {task.extendedProps.sku}</div>
+                    <div className="unscheduled-sku">{task.extendedProps.customer_name}</div>
                   </div>
                 ))}
               </div>
@@ -421,21 +421,22 @@ const Calendar = () => {
           <FullCalendar
             ref={calendarRef}
             plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
-            initialView="timeGridWeek"
+            initialView="dayGridMonth"
             headerToolbar={{
               left: '',
               center: 'title',
-              right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek',
+              right: 'dayGridMonth,timeGridDay,listWeek',
             }}
             views={{
-              timeGridWeek: {
-                titleFormat: { year: 'numeric', month: 'short', day: 'numeric' },
+              dayGridMonth: {
+                titleFormat: { year: 'numeric', month: 'long' },
+                dayMaxEventRows: 4,
               },
               timeGridDay: {
                 titleFormat: { year: 'numeric', month: 'long', day: 'numeric' },
               },
             }}
-            height="calc(100vh - 200px)"
+            height="calc(100vh - 160px)"
             contentHeight="auto"
             events={calendarEvents}
             eventClick={handleEventClick}
@@ -504,16 +505,10 @@ const Calendar = () => {
                 </div>
               </div>
               {selectedEvent.extendedProps.type === 'delivery' && (
-                <>
-                  <div className="modal-info">
-                    <label>Item</label>
-                    <div>{selectedEvent.extendedProps.item_title}</div>
-                  </div>
-                  <div className="modal-info">
-                    <label>SKU</label>
-                    <div>{selectedEvent.extendedProps.sku}</div>
-                  </div>
-                </>
+                <div className="modal-info">
+                  <label>Item</label>
+                  <div>{selectedEvent.extendedProps.item_title}</div>
+                </div>
               )}
               {selectedEvent.extendedProps.type === 'pickup' && (
                 <>

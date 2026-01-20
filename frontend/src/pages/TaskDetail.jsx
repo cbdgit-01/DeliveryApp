@@ -13,10 +13,24 @@ const TaskDetail = () => {
   const [updating, setUpdating] = useState(false);
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [scheduleData, setScheduleData] = useState({
     scheduled_start: '',
     scheduled_end: '',
+  });
+  const [editData, setEditData] = useState({
+    customer_name: '',
+    customer_phone: '',
+    customer_email: '',
+    delivery_address_line1: '',
+    delivery_address_line2: '',
+    delivery_city: '',
+    delivery_state: '',
+    delivery_zip: '',
+    item_title: '',
+    item_description: '',
+    delivery_notes: '',
   });
 
   useEffect(() => {
@@ -35,6 +49,21 @@ const TaskDetail = () => {
           scheduled_end: formatDateTimeLocal(response.data.scheduled_end),
         });
       }
+      
+      // Initialize edit data
+      setEditData({
+        customer_name: response.data.customer_name || '',
+        customer_phone: response.data.customer_phone || '',
+        customer_email: response.data.customer_email || '',
+        delivery_address_line1: response.data.delivery_address_line1 || '',
+        delivery_address_line2: response.data.delivery_address_line2 || '',
+        delivery_city: response.data.delivery_city || '',
+        delivery_state: response.data.delivery_state || '',
+        delivery_zip: response.data.delivery_zip || '',
+        item_title: response.data.item_title || '',
+        item_description: response.data.item_description || '',
+        delivery_notes: response.data.delivery_notes || '',
+      });
     } catch (error) {
       console.error('Error fetching task:', error);
     } finally {
@@ -188,6 +217,39 @@ const TaskDetail = () => {
     }
   };
 
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    setUpdating(true);
+    try {
+      await tasksAPI.update(id, editData);
+      await fetchTask();
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error updating task:', error);
+      alert('Failed to update task');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    // Reset edit data to current task values
+    setEditData({
+      customer_name: task.customer_name || '',
+      customer_phone: task.customer_phone || '',
+      customer_email: task.customer_email || '',
+      delivery_address_line1: task.delivery_address_line1 || '',
+      delivery_address_line2: task.delivery_address_line2 || '',
+      delivery_city: task.delivery_city || '',
+      delivery_state: task.delivery_state || '',
+      delivery_zip: task.delivery_zip || '',
+      item_title: task.item_title || '',
+      item_description: task.item_description || '',
+      delivery_notes: task.delivery_notes || '',
+    });
+    setIsEditing(false);
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return 'Not scheduled';
     const date = new Date(dateString);
@@ -227,152 +289,316 @@ const TaskDetail = () => {
           ← Back
         </button>
         <h1>Delivery Details</h1>
-        <div className="header-menu">
-          <button 
-            className="menu-trigger" 
-            onClick={() => setShowMenu(!showMenu)}
-            aria-label="More options"
-          >
-            ⋮
-          </button>
-          {showMenu && (
-            <div className="menu-dropdown">
-              <button 
-                className="menu-item menu-item-danger"
-                onClick={() => {
-                  setShowMenu(false);
-                  handleDeleteTask();
-                }}
-              >
-                Delete from System
-              </button>
-            </div>
+        <div className="header-actions">
+          {!isEditing && canSchedule && task.status !== 'delivered' && task.status !== 'paid' && (
+            <button 
+              className="btn btn-secondary btn-edit"
+              onClick={() => setIsEditing(true)}
+            >
+              Edit
+            </button>
           )}
+          <div className="header-menu">
+            <button 
+              className="menu-trigger" 
+              onClick={() => setShowMenu(!showMenu)}
+              aria-label="More options"
+            >
+              ⋮
+            </button>
+            {showMenu && (
+              <div className="menu-dropdown">
+                <button 
+                  className="menu-item menu-item-danger"
+                  onClick={() => {
+                    setShowMenu(false);
+                    handleDeleteTask();
+                  }}
+                >
+                  Delete from System
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       <div className="detail-grid">
         <div className="detail-main">
-          <div className="card">
-            <div className="card-header-with-badge">
-              <h2>Customer Information</h2>
-              <span className={getStatusBadgeClass(task.status)}>
-                {task.status}
-              </span>
-            </div>
+          {isEditing ? (
+            /* Edit Mode */
+            <form onSubmit={handleSaveEdit} className="edit-form">
+              <div className="card">
+                <div className="card-header-with-badge">
+                  <h2>Customer Information</h2>
+                  <span className={getStatusBadgeClass(task.status)}>
+                    {task.status}
+                  </span>
+                </div>
 
-            <div className="info-grid">
-              <div className="info-item">
-                <label>Name</label>
-                <div className="info-value">{task.customer_name}</div>
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label htmlFor="customer_name">Name</label>
+                    <input
+                      id="customer_name"
+                      type="text"
+                      value={editData.customer_name}
+                      onChange={(e) => setEditData({ ...editData, customer_name: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="customer_phone">Phone</label>
+                    <input
+                      id="customer_phone"
+                      type="tel"
+                      value={editData.customer_phone}
+                      onChange={(e) => setEditData({ ...editData, customer_phone: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="customer_email">Email</label>
+                    <input
+                      id="customer_email"
+                      type="email"
+                      value={editData.customer_email}
+                      onChange={(e) => setEditData({ ...editData, customer_email: e.target.value })}
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div className="info-item">
-                <label>Phone</label>
-                <div className="info-value">
-                  <a href={`tel:${task.customer_phone}`}>{task.customer_phone}</a>
+              <div className="card">
+                <h2>Delivery Address</h2>
+                <div className="form-grid">
+                  <div className="form-group full-width">
+                    <label htmlFor="delivery_address_line1">Address Line 1</label>
+                    <input
+                      id="delivery_address_line1"
+                      type="text"
+                      value={editData.delivery_address_line1}
+                      onChange={(e) => setEditData({ ...editData, delivery_address_line1: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group full-width">
+                    <label htmlFor="delivery_address_line2">Address Line 2</label>
+                    <input
+                      id="delivery_address_line2"
+                      type="text"
+                      value={editData.delivery_address_line2}
+                      onChange={(e) => setEditData({ ...editData, delivery_address_line2: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="delivery_city">City</label>
+                    <input
+                      id="delivery_city"
+                      type="text"
+                      value={editData.delivery_city}
+                      onChange={(e) => setEditData({ ...editData, delivery_city: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="delivery_state">State</label>
+                    <input
+                      id="delivery_state"
+                      type="text"
+                      value={editData.delivery_state}
+                      onChange={(e) => setEditData({ ...editData, delivery_state: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="delivery_zip">ZIP Code</label>
+                    <input
+                      id="delivery_zip"
+                      type="text"
+                      value={editData.delivery_zip}
+                      onChange={(e) => setEditData({ ...editData, delivery_zip: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="card">
+                <h2>Item Information</h2>
+                <div className="form-grid">
+                  <div className="form-group full-width">
+                    <label htmlFor="item_title">Item Title</label>
+                    <input
+                      id="item_title"
+                      type="text"
+                      value={editData.item_title}
+                      onChange={(e) => setEditData({ ...editData, item_title: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group full-width">
+                    <label htmlFor="item_description">Item Description</label>
+                    <textarea
+                      id="item_description"
+                      value={editData.item_description}
+                      onChange={(e) => setEditData({ ...editData, item_description: e.target.value })}
+                      rows={3}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="card">
+                <h2>Delivery Notes</h2>
+                <div className="form-group">
+                  <textarea
+                    id="delivery_notes"
+                    value={editData.delivery_notes}
+                    onChange={(e) => setEditData({ ...editData, delivery_notes: e.target.value })}
+                    rows={4}
+                    placeholder="Add notes about the delivery..."
+                  />
                 </div>
               </div>
 
-              {task.customer_email && (
-                <div className="info-item">
-                  <label>Email</label>
-                  <div className="info-value">
-                    <a href={`mailto:${task.customer_email}`}>{task.customer_email}</a>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="card">
-            <h2>Delivery Address</h2>
-            <div className="address-block">
-              <p>{task.delivery_address_line1}</p>
-              {task.delivery_address_line2 && <p>{task.delivery_address_line2}</p>}
-              <p>{task.delivery_city}, {task.delivery_state} {task.delivery_zip}</p>
-            </div>
-            <a
-              href={`https://maps.google.com/?q=${encodeURIComponent(
-                `${task.delivery_address_line1}, ${task.delivery_city}, ${task.delivery_state} ${task.delivery_zip}`
-              )}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn btn-secondary"
-            >
-              📍 Open in Maps
-            </a>
-          </div>
-
-          <div className="card">
-            <h2>Item Information {task.items && task.items.length > 1 ? `(${task.items.length} items)` : ''}</h2>
-            
-            {/* Multiple items display */}
-            {task.items && task.items.length > 0 ? (
-              <div className="multi-items-list">
-                {task.items.map((item, index) => (
-                  <div key={index} className="multi-item-card">
-                    {item.image_url && (
-                      <img src={item.image_url} alt={item.title} className="multi-item-image" />
-                    )}
-                    <div className="multi-item-info">
-                      <h4>{item.title}</h4>
-                      <p className="multi-item-sku">SKU: {item.sku}</p>
-                      {item.description && (
-                        <p className="multi-item-desc">{item.description}</p>
-                      )}
-                    </div>
-                  </div>
-                ))}
+              <div className="edit-actions">
+                <button type="button" className="btn btn-secondary" onClick={handleCancelEdit} disabled={updating}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={updating}>
+                  {updating ? 'Saving...' : 'Save Changes'}
+                </button>
               </div>
-            ) : (
-              /* Single item display (backwards compatible) */
-              <>
+            </form>
+          ) : (
+            /* View Mode */
+            <>
+              <div className="card">
+                <div className="card-header-with-badge">
+                  <h2>Customer Information</h2>
+                  <span className={getStatusBadgeClass(task.status)}>
+                    {task.status}
+                  </span>
+                </div>
+
                 <div className="info-grid">
                   <div className="info-item">
-                    <label>Item</label>
-                    <div className="info-value">{task.item_title}</div>
+                    <label>Name</label>
+                    <div className="info-value">{task.customer_name}</div>
                   </div>
 
                   <div className="info-item">
-                    <label>SKU</label>
-                    <div className="info-value">{task.sku}</div>
+                    <label>Phone</label>
+                    <div className="info-value">
+                      <a href={`tel:${task.customer_phone}`}>{task.customer_phone}</a>
+                    </div>
                   </div>
 
-                  <div className="info-item">
-                    <label>Liberty ID</label>
-                    <div className="info-value">{task.liberty_item_id}</div>
-                  </div>
-
-                  {task.shopify_order_number && (
+                  {task.customer_email && (
                     <div className="info-item">
-                      <label>Order Number</label>
-                      <div className="info-value">#{task.shopify_order_number}</div>
+                      <label>Email</label>
+                      <div className="info-value">
+                        <a href={`mailto:${task.customer_email}`}>{task.customer_email}</a>
+                      </div>
                     </div>
                   )}
                 </div>
+              </div>
 
-                {task.item_description && (
-                  <div className="info-item" style={{ marginTop: '12px' }}>
-                    <label>Description</label>
-                    <div className="info-value">{task.item_description}</div>
+              <div className="card">
+                <h2>Delivery Address</h2>
+                <div className="address-block">
+                  <p>{task.delivery_address_line1}</p>
+                  {task.delivery_address_line2 && <p>{task.delivery_address_line2}</p>}
+                  <p>{task.delivery_city}, {task.delivery_state} {task.delivery_zip}</p>
+                </div>
+                <a
+                  href={`https://maps.google.com/?q=${encodeURIComponent(
+                    `${task.delivery_address_line1}, ${task.delivery_city}, ${task.delivery_state} ${task.delivery_zip}`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-secondary"
+                >
+                  Open in Maps
+                </a>
+              </div>
+
+              <div className="card">
+                <h2>Item Information {task.items && task.items.length > 1 ? `(${task.items.length} items)` : ''}</h2>
+                
+                {/* Multiple items display */}
+                {task.items && task.items.length > 0 ? (
+                  <div className="multi-items-list">
+                    {task.items.map((item, index) => (
+                      <div key={index} className="multi-item-card">
+                        {item.image_url && (
+                          <img src={item.image_url} alt={item.title} className="multi-item-image" />
+                        )}
+                        <div className="multi-item-info">
+                          <h4>{item.title}</h4>
+                          {item.description && (
+                            <p className="multi-item-desc">{item.description}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                )}
+                ) : (
+                  /* Single item display (backwards compatible) */
+                  <>
+                    <div className="info-grid">
+                      <div className="info-item">
+                        <label>Item</label>
+                        <div className="info-value">{task.item_title}</div>
+                      </div>
 
-                {task.image_url && (
-                  <div className="item-image">
-                    <img src={task.image_url} alt={task.item_title} />
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+                      {task.liberty_item_id && (
+                        <div className="info-item">
+                          <label>Liberty ID</label>
+                          <div className="info-value">{task.liberty_item_id}</div>
+                        </div>
+                      )}
 
-          {task.delivery_notes && (
-            <div className="card">
-              <h2>Delivery Notes</h2>
-              <p className="notes-text">{task.delivery_notes}</p>
-            </div>
+                      {task.shopify_order_number && (
+                        <div className="info-item">
+                          <label>Order Number</label>
+                          <div className="info-value">#{task.shopify_order_number}</div>
+                        </div>
+                      )}
+                    </div>
+
+                    {task.item_description && (
+                      <div className="info-item" style={{ marginTop: '12px' }}>
+                        <label>Description</label>
+                        <div className="info-value">{task.item_description}</div>
+                      </div>
+                    )}
+
+                    {task.image_url && (
+                      <div className="item-image">
+                        <img src={task.image_url} alt={task.item_title} />
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {task.delivery_notes && (
+                <div className="card">
+                  <h2>Delivery Notes</h2>
+                  <p className="notes-text">{task.delivery_notes}</p>
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -384,7 +610,11 @@ const TaskDetail = () => {
               <div className="timeline">
                 {task.delivered_at && (
                   <div className="timeline-item delivered">
-                    <div className="timeline-icon">🚚</div>
+                    <div className="timeline-icon">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+                      </svg>
+                    </div>
                     <div className="timeline-content">
                       <label>Delivered</label>
                       <div className="info-value">{formatDate(task.delivered_at)}</div>
@@ -393,7 +623,11 @@ const TaskDetail = () => {
                 )}
                 {task.paid_at && (
                   <div className="timeline-item paid">
-                    <div className="timeline-icon">💰</div>
+                    <div className="timeline-icon">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/>
+                      </svg>
+                    </div>
                     <div className="timeline-content">
                       <label>Payment Received</label>
                       <div className="info-value">{formatDate(task.paid_at)}</div>
@@ -523,7 +757,7 @@ const TaskDetail = () => {
                       onClick={handleMarkDelivered}
                       disabled={updating}
                     >
-                      🚚 Mark as Delivered
+                      Mark as Delivered
                     </button>
                     <button
                       className="btn btn-secondary btn-full"
@@ -540,7 +774,7 @@ const TaskDetail = () => {
                     onClick={handlePaymentReceived}
                     disabled={updating}
                   >
-                    💰 Payment Received
+                    Payment Received
                   </button>
                 )}
               </div>
