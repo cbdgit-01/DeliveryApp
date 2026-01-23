@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useOffline } from '../context/OfflineContext';
 import './Layout.css';
 
 const Layout = () => {
   const { user, logout, isStaff, isAdmin } = useAuth();
   const { theme, toggleTheme, isDark } = useTheme();
+  const { isOnline, pendingCount, isSyncing, syncPendingActions } = useOffline();
   const location = useLocation();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -84,8 +86,33 @@ const Layout = () => {
           </div>
 
           <div className="navbar-user">
-            <button 
-              className="theme-toggle" 
+            {/* Offline Indicator */}
+            {!isOnline && (
+              <span className="offline-indicator" title="You are offline">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M24 8.98C20.93 5.9 16.69 4 12 4c-.32 0-.65.01-.97.03L23.03 16c.03-.32.04-.65.04-.97 0-2.25-.56-4.37-1.57-6.23L24 8.98zM3.92 6.03C1.56 8.14 0 11.33 0 14.82c0 .32.01.64.04.96l11.93-11.97c-2.85.09-5.47 1.05-7.57 2.58l-.48-.36zm.71 16.89l17.03-17.03-1.41-1.41-2.52 2.52C15.68 5.37 13.93 4.82 12 4.82c-4.97 0-9 4.03-9 9 0 1.93.55 3.68 1.5 5.2l-1.41 1.41 1.41 1.41 1.13-1.13c1.89 1.35 4.14 2.11 6.57 2.11.67 0 1.33-.07 1.97-.2l1.41-1.41c-.93.21-1.89.31-2.88.31-3.97 0-7.23-2.74-8.14-6.38L4.63 22.92z"/>
+                </svg>
+                Offline
+              </span>
+            )}
+
+            {/* Pending Sync Indicator */}
+            {pendingCount > 0 && (
+              <button
+                className="sync-indicator"
+                onClick={syncPendingActions}
+                disabled={isSyncing || !isOnline}
+                title={isOnline ? 'Click to sync' : 'Waiting for connection'}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className={isSyncing ? 'spinning' : ''}>
+                  <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
+                </svg>
+                {pendingCount} pending
+              </button>
+            )}
+
+            <button
+              className="theme-toggle"
               onClick={toggleTheme}
               title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
             >

@@ -2,46 +2,78 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { tasksAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useOffline } from '../context/OfflineContext';
 import anime from 'animejs';
 import './Dashboard.css';
 
 const Dashboard = () => {
   const { isAdmin } = useAuth();
+  const { isOnline, cacheTasks, getCachedTasks } = useOffline();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('active');
   const [searchQuery, setSearchQuery] = useState('');
+  const [usingCache, setUsingCache] = useState(false);
   const containerRef = useRef(null);
 
   useEffect(() => {
     fetchTasks();
-  }, [filter]);
+  }, [filter, isOnline]);
 
   const fetchTasks = async () => {
     try {
       setLoading(true);
-      let params = {};
-      
-      if (filter === 'active') {
-        // Fetch only pending and scheduled (not delivered or cancelled)
-        params = {}; // We'll filter on the frontend
-      } else if (filter !== 'all') {
-        params = { status: filter };
+      setUsingCache(false);
+
+      if (isOnline) {
+        // Online: fetch from API and cache
+        let params = {};
+
+        if (filter === 'active') {
+          params = {}; // We'll filter on the frontend
+        } else if (filter !== 'all') {
+          params = { status: filter };
+        }
+
+        const response = await tasksAPI.list(params);
+
+        // Cache all tasks for offline use
+        await cacheTasks(response.data);
+
+        // Filter out paid and cancelled if in 'active' mode
+        let filteredTasks = response.data;
+        if (filter === 'active') {
+          filteredTasks = response.data.filter(
+            task => task.status !== 'paid' && task.status !== 'cancelled'
+          );
+        }
+
+        setTasks(filteredTasks);
+      } else {
+        // Offline: use cached data
+        setUsingCache(true);
+        const cachedTasks = await getCachedTasks();
+
+        // Apply same filtering logic
+        let filteredTasks = cachedTasks;
+        if (filter === 'active') {
+          filteredTasks = cachedTasks.filter(
+            task => task.status !== 'paid' && task.status !== 'cancelled'
+          );
+        } else if (filter !== 'all') {
+          filteredTasks = cachedTasks.filter(task => task.status === filter);
+        }
+
+        setTasks(filteredTasks);
       }
-      
-      const response = await tasksAPI.list(params);
-      
-      // Filter out paid and cancelled if in 'active' mode (delivered = awaiting payment, so still active)
-      let filteredTasks = response.data;
-      if (filter === 'active') {
-        filteredTasks = response.data.filter(
-          task => task.status !== 'paid' && task.status !== 'cancelled'
-        );
-      }
-      
-      setTasks(filteredTasks);
     } catch (error) {
       console.error('Error fetching tasks:', error);
+      // If online fetch fails, try cache
+      if (isOnline) {
+        setUsingCache(true);
+        const cachedTasks = await getCachedTasks();
+        setTasks(cachedTasks);
+      }
     } finally {
       setLoading(false);
     }

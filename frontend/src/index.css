@@ -207,6 +207,12 @@ code {
   border-color: var(--status-pending);
 }
 
+.btn-info {
+  background: var(--status-scheduled);
+  color: var(--text-inverse);
+  border-color: var(--status-scheduled);
+}
+
 .btn-secondary {
   background: var(--bg-card);
   color: var(--text-muted);

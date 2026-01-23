@@ -44,6 +44,8 @@ def ensure_schema_updates():
     schema_updates = [
         # Add items column to delivery_tasks if it doesn't exist
         ("delivery_tasks", "items", "ALTER TABLE delivery_tasks ADD COLUMN IF NOT EXISTS items JSON"),
+        # Add signature_url column to delivery_tasks for e-signatures
+        ("delivery_tasks", "signature_url", "ALTER TABLE delivery_tasks ADD COLUMN IF NOT EXISTS signature_url VARCHAR(255)"),
     ]
     
     with engine.connect() as conn:

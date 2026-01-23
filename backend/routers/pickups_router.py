@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import case, func
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, date, timezone
 
 from database import get_db
 from models import PickupRequest, PickupStatus, User
@@ -25,8 +26,20 @@ def get_pickups(
     if status:
         query = query.filter(PickupRequest.status == status)
     
-    # Order by created_at descending (newest first)
-    query = query.order_by(PickupRequest.created_at.desc())
+    # Order by: today's scheduled first, then future dates ascending, then past, then unscheduled
+    today = date.today()
+    query = query.order_by(
+        case(
+            (func.date(PickupRequest.scheduled_start) == today, 0),  # Today first
+            (PickupRequest.scheduled_start > datetime.now(), 1),      # Future second
+            (PickupRequest.scheduled_start.is_(None), 3),             # Unscheduled last
+            else_=2                                                    # Past third
+        ),
+        case(
+            (PickupRequest.scheduled_start > datetime.now(), PickupRequest.scheduled_start),  # Future: ascending
+            else_=PickupRequest.scheduled_start.desc()  # Past: descending (most recent first)
+        )
+    )
     
     return query.offset(skip).limit(limit).all()
 
@@ -93,7 +106,7 @@ def update_pickup(
     
     # If status changed to completed, set completed_at timestamp
     if old_status != PickupStatus.completed and pickup.status == PickupStatus.completed:
-        pickup.completed_at = datetime.utcnow()
+        pickup.completed_at = datetime.now(timezone.utc)
     
     # If scheduling info added and status is approved, update to scheduled
     if pickup.scheduled_start and pickup.status == PickupStatus.approved:
@@ -182,7 +195,7 @@ def complete_pickup(
         raise HTTPException(status_code=400, detail="Can only complete scheduled pickups")
     
     pickup.status = PickupStatus.completed
-    pickup.completed_at = datetime.utcnow()
+    pickup.completed_at = datetime.now(timezone.utc)
     
     db.commit()
     db.refresh(pickup)

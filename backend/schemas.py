@@ -83,6 +83,7 @@ class DeliveryTaskUpdate(BaseModel):
     delivery_city: Optional[str] = None
     delivery_state: Optional[str] = None
     delivery_zip: Optional[str] = None
+    signature_url: Optional[str] = None
 
 
 class DeliveryTaskResponse(DeliveryTaskBase):
@@ -96,6 +97,7 @@ class DeliveryTaskResponse(DeliveryTaskBase):
     assigned_to: Optional[str] = None
     delivered_at: Optional[datetime] = None    # When actually delivered
     paid_at: Optional[datetime] = None         # When payment received
+    signature_url: Optional[str] = None        # E-signature image URL
     created_at: datetime
     updated_at: datetime
     

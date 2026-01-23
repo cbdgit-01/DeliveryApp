@@ -92,7 +92,10 @@ class DeliveryTask(Base):
     # Completion timestamps
     delivered_at = Column(DateTime, nullable=True)  # When item was actually delivered
     paid_at = Column(DateTime, nullable=True)       # When payment was received
-    
+
+    # E-signature
+    signature_url = Column(String, nullable=True)   # URL to customer signature image
+
     # Timestamps
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)

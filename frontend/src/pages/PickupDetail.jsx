@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { pickupsAPI } from '../services/api';
+import { openInMaps } from '../utils/maps';
 import './TaskDetail.css'; // Reuse TaskDetail styles
 
 const PickupDetail = () => {
@@ -222,17 +223,15 @@ const PickupDetail = () => {
             {pickup.pickup_address_line2 && <p>{pickup.pickup_address_line2}</p>}
             <p>{pickup.pickup_city}, {pickup.pickup_state} {pickup.pickup_zip}</p>
           </div>
-          <a
-            href={`https://maps.google.com/?q=${encodeURIComponent(
+          <button
+            onClick={() => openInMaps(
               `${pickup.pickup_address_line1}, ${pickup.pickup_city}, ${pickup.pickup_state} ${pickup.pickup_zip}`
-            )}`}
-            target="_blank"
-            rel="noopener noreferrer"
+            )}
             className="btn btn-secondary"
             style={{ marginTop: '12px' }}
           >
-            📍 Open in Maps
-          </a>
+            Open in Maps
+          </button>
         </div>
 
         {/* Notes */}

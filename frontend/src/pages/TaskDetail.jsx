@@ -1,13 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { tasksAPI, calendarAPI } from '../services/api';
+import { tasksAPI, calendarAPI, uploadsAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useOffline } from '../context/OfflineContext';
+import { openInMaps } from '../utils/maps';
+import { openSmsWithMessage } from '../utils/sms';
+import { getETA, formatArrivalTime } from '../utils/directions';
+import SignatureCanvas from '../components/SignatureCanvas';
 import './TaskDetail.css';
 
 const TaskDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { isOnline, queueAction, updateCachedTask, getCachedTasks } = useOffline();
   const [task, setTask] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -15,6 +21,9 @@ const TaskDetail = () => {
   const [showMenu, setShowMenu] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [upcomingEvents, setUpcomingEvents] = useState([]);
+  const [gettingLocation, setGettingLocation] = useState(false);
+  const [showSignature, setShowSignature] = useState(false);
+  const [savingSignature, setSavingSignature] = useState(false);
   const [scheduleData, setScheduleData] = useState({
     scheduled_start: '',
     scheduled_end: '',
@@ -138,19 +147,74 @@ const TaskDetail = () => {
     }
   };
 
-  const handleMarkDelivered = async () => {
-    if (!confirm('Mark this delivery as delivered? (Status will be "Awaiting Payment")')) return;
+  const handleMarkDelivered = () => {
+    // Show signature canvas instead of immediately marking as delivered
+    setShowSignature(true);
+  };
 
-    setUpdating(true);
-    try {
-      await tasksAPI.update(id, { status: 'delivered' });
-      await fetchTask();
-    } catch (error) {
-      console.error('Error updating task:', error);
-      alert('Failed to update task');
-    } finally {
-      setUpdating(false);
+  const handleSignatureSave = async (signatureFile) => {
+    if (!isOnline) {
+      // Can't upload signature when offline
+      const skipSignature = confirm(
+        'Cannot upload signature while offline. Mark as delivered without signature?\n\nThe delivery will sync when you reconnect.'
+      );
+
+      if (skipSignature) {
+        setSavingSignature(true);
+        try {
+          await queueAction({
+            type: 'UPDATE_TASK',
+            taskId: parseInt(id),
+            data: { status: 'delivered' },
+          });
+
+          await updateCachedTask(parseInt(id), {
+            status: 'delivered',
+            delivered_at: new Date().toISOString(),
+          });
+
+          setTask(prev => ({
+            ...prev,
+            status: 'delivered',
+            delivered_at: new Date().toISOString(),
+          }));
+
+          setShowSignature(false);
+          alert('Delivery recorded. Signature will need to be collected when online.');
+        } catch (error) {
+          console.error('Error queuing action:', error);
+          alert('Failed to record delivery');
+        } finally {
+          setSavingSignature(false);
+        }
+      }
+      return;
     }
+
+    setSavingSignature(true);
+    try {
+      // Upload signature image
+      const uploadResponse = await uploadsAPI.uploadImages([signatureFile]);
+      const signatureUrl = uploadResponse.data.urls[0];
+
+      // Update task with delivered status and signature URL
+      await tasksAPI.update(id, {
+        status: 'delivered',
+        signature_url: signatureUrl,
+      });
+
+      await fetchTask();
+      setShowSignature(false);
+    } catch (error) {
+      console.error('Error saving signature:', error);
+      alert('Failed to save signature. Please try again.');
+    } finally {
+      setSavingSignature(false);
+    }
+  };
+
+  const handleSignatureCancel = () => {
+    setShowSignature(false);
   };
 
   const handlePaymentReceived = async () => {
@@ -158,8 +222,32 @@ const TaskDetail = () => {
 
     setUpdating(true);
     try {
-      await tasksAPI.update(id, { status: 'paid' });
-      await fetchTask();
+      if (isOnline) {
+        await tasksAPI.update(id, { status: 'paid' });
+        await fetchTask();
+      } else {
+        // Queue action for later sync
+        await queueAction({
+          type: 'UPDATE_TASK',
+          taskId: parseInt(id),
+          data: { status: 'paid' },
+        });
+
+        // Update local cache optimistically
+        await updateCachedTask(parseInt(id), {
+          status: 'paid',
+          paid_at: new Date().toISOString(),
+        });
+
+        // Update local state
+        setTask(prev => ({
+          ...prev,
+          status: 'paid',
+          paid_at: new Date().toISOString(),
+        }));
+
+        alert('Payment recorded. Will sync when back online.');
+      }
     } catch (error) {
       console.error('Error updating task:', error);
       alert('Failed to update task');
@@ -214,6 +302,47 @@ const TaskDetail = () => {
       alert('Failed to unschedule task');
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleStartingDelivery = async () => {
+    setGettingLocation(true);
+
+    try {
+      // Get current location
+      const position = await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+        });
+      });
+
+      const { latitude, longitude } = position.coords;
+      const destination = `${task.delivery_address_line1}, ${task.delivery_city}, ${task.delivery_state} ${task.delivery_zip}`;
+
+      // Get ETA from Google Maps
+      const etaDuration = await getETA(latitude, longitude, destination);
+      const arrivalTime = formatArrivalTime(etaDuration);
+
+      // Format customer's first name
+      const firstName = task.customer_name.split(' ')[0];
+
+      // Create the SMS message
+      const message = `Hi ${firstName}, this is Consigned By Design. We're on our way with your delivery! Our estimated arrival time is around ${arrivalTime}.`;
+
+      // Open SMS app with pre-filled message
+      openSmsWithMessage(task.customer_phone, message);
+
+    } catch (error) {
+      console.error('Error getting location:', error);
+
+      // Fallback: send SMS without specific ETA
+      const firstName = task.customer_name.split(' ')[0];
+      const message = `Hi ${firstName}, this is Consigned By Design. We're on our way with your delivery!`;
+      openSmsWithMessage(task.customer_phone, message);
+
+    } finally {
+      setGettingLocation(false);
     }
   };
 
@@ -520,16 +649,14 @@ const TaskDetail = () => {
                   {task.delivery_address_line2 && <p>{task.delivery_address_line2}</p>}
                   <p>{task.delivery_city}, {task.delivery_state} {task.delivery_zip}</p>
                 </div>
-                <a
-                  href={`https://maps.google.com/?q=${encodeURIComponent(
+                <button
+                  onClick={() => openInMaps(
                     `${task.delivery_address_line1}, ${task.delivery_city}, ${task.delivery_state} ${task.delivery_zip}`
-                  )}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  )}
                   className="btn btn-secondary"
                 >
                   Open in Maps
-                </a>
+                </button>
               </div>
 
               <div className="card">
@@ -631,6 +758,23 @@ const TaskDetail = () => {
                     <div className="timeline-content">
                       <label>Payment Received</label>
                       <div className="info-value">{formatDate(task.paid_at)}</div>
+                    </div>
+                  </div>
+                )}
+                {task.signature_url && (
+                  <div className="timeline-item signature">
+                    <div className="timeline-icon">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                      </svg>
+                    </div>
+                    <div className="timeline-content">
+                      <label>Customer Signature</label>
+                      <img
+                        src={task.signature_url}
+                        alt="Customer signature"
+                        className="signature-image"
+                      />
                     </div>
                   </div>
                 )}
@@ -753,6 +897,13 @@ const TaskDetail = () => {
                 {task.status === 'scheduled' && (
                   <>
                     <button
+                      className="btn btn-info btn-full"
+                      onClick={handleStartingDelivery}
+                      disabled={gettingLocation}
+                    >
+                      {gettingLocation ? 'Getting Location...' : 'Starting Delivery (Send SMS)'}
+                    </button>
+                    <button
                       className="btn btn-warning btn-full"
                       onClick={handleMarkDelivered}
                       disabled={updating}
@@ -782,6 +933,15 @@ const TaskDetail = () => {
           )}
         </div>
       </div>
+
+      {/* Signature Modal */}
+      {showSignature && (
+        <SignatureCanvas
+          onSave={handleSignatureSave}
+          onCancel={handleSignatureCancel}
+          saving={savingSignature}
+        />
+      )}
     </div>
   );
 };

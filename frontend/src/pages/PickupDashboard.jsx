@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { pickupsAPI } from '../services/api';
+import { useOffline } from '../context/OfflineContext';
 import anime from 'animejs';
 import './Dashboard.css';
 
 const PickupDashboard = () => {
+  const { isOnline, cachePickups, getCachedPickups } = useOffline();
   const [pickups, setPickups] = useState([]);
   const [stats, setStats] = useState({
     pending_review: 0,
@@ -16,18 +18,47 @@ const PickupDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('active');
   const [searchQuery, setSearchQuery] = useState('');
+  const [usingCache, setUsingCache] = useState(false);
   const containerRef = useRef(null);
 
   const fetchPickups = async () => {
     try {
-      const [pickupsRes, statsRes] = await Promise.all([
-        pickupsAPI.list(),
-        pickupsAPI.getStats()
-      ]);
-      setPickups(pickupsRes.data);
-      setStats(statsRes.data);
+      setUsingCache(false);
+
+      if (isOnline) {
+        const [pickupsRes, statsRes] = await Promise.all([
+          pickupsAPI.list(),
+          pickupsAPI.getStats()
+        ]);
+        setPickups(pickupsRes.data);
+        setStats(statsRes.data);
+
+        // Cache pickups for offline use
+        await cachePickups(pickupsRes.data);
+      } else {
+        // Offline: use cached data
+        setUsingCache(true);
+        const cachedPickups = await getCachedPickups();
+        setPickups(cachedPickups);
+
+        // Calculate stats from cached data
+        const cachedStats = {
+          pending_review: cachedPickups.filter(p => p.status === 'pending_review').length,
+          approved: cachedPickups.filter(p => p.status === 'approved').length,
+          scheduled: cachedPickups.filter(p => p.status === 'scheduled').length,
+          completed: cachedPickups.filter(p => p.status === 'completed').length,
+          declined: cachedPickups.filter(p => p.status === 'declined').length,
+        };
+        setStats(cachedStats);
+      }
     } catch (error) {
       console.error('Error fetching pickups:', error);
+      // If online fetch fails, try cache
+      if (isOnline) {
+        setUsingCache(true);
+        const cachedPickups = await getCachedPickups();
+        setPickups(cachedPickups);
+      }
     } finally {
       setLoading(false);
     }
@@ -35,7 +66,7 @@ const PickupDashboard = () => {
 
   useEffect(() => {
     fetchPickups();
-  }, []);
+  }, [isOnline]);
 
   // Entrance animation for cards
   useEffect(() => {

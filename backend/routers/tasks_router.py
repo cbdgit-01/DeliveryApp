@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import case, func
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, date, timezone
 from database import get_db
 from models import User, DeliveryTask, TaskStatus
 from schemas import DeliveryTaskCreate, DeliveryTaskResponse, DeliveryTaskUpdate
@@ -64,8 +65,20 @@ def list_tasks(
     if date_to:
         query = query.filter(DeliveryTask.created_at <= date_to)
     
-    # Order by most recent first
-    query = query.order_by(DeliveryTask.created_at.desc())
+    # Order by: today's scheduled first, then future dates ascending, then past, then unscheduled
+    today = date.today()
+    query = query.order_by(
+        case(
+            (func.date(DeliveryTask.scheduled_start) == today, 0),  # Today first
+            (DeliveryTask.scheduled_start > datetime.now(), 1),      # Future second
+            (DeliveryTask.scheduled_start.is_(None), 3),             # Unscheduled last
+            else_=2                                                   # Past third
+        ),
+        case(
+            (DeliveryTask.scheduled_start > datetime.now(), DeliveryTask.scheduled_start),  # Future: ascending
+            else_=DeliveryTask.scheduled_start.desc()  # Past: descending (most recent first)
+        )
+    )
     
     tasks = query.offset(skip).limit(limit).all()
     return tasks
@@ -112,11 +125,11 @@ def update_task(
     
     # If marked as delivered, set delivered_at timestamp
     if task_update.status == TaskStatus.delivered and task.delivered_at is None:
-        task.delivered_at = datetime.now()
-    
+        task.delivered_at = datetime.now(timezone.utc)
+
     # If marked as paid, set paid_at timestamp
     if task_update.status == TaskStatus.paid and task.paid_at is None:
-        task.paid_at = datetime.now()
+        task.paid_at = datetime.now(timezone.utc)
     
     db.commit()
     db.refresh(task)
