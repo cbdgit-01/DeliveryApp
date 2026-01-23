@@ -65,7 +65,7 @@ def list_tasks(
     if date_to:
         query = query.filter(DeliveryTask.created_at <= date_to)
     
-    # Order by: today's scheduled first, then future dates ascending, then past, then unscheduled
+    # Order by: today's scheduled first, then future dates, then past, then unscheduled
     today = date.today()
     query = query.order_by(
         case(
@@ -74,10 +74,7 @@ def list_tasks(
             (DeliveryTask.scheduled_start.is_(None), 3),             # Unscheduled last
             else_=2                                                   # Past third
         ),
-        case(
-            (DeliveryTask.scheduled_start > datetime.now(), DeliveryTask.scheduled_start),  # Future: ascending
-            else_=DeliveryTask.scheduled_start.desc()  # Past: descending (most recent first)
-        )
+        DeliveryTask.scheduled_start.asc().nullslast()  # Sort by date ascending, nulls last
     )
     
     tasks = query.offset(skip).limit(limit).all()

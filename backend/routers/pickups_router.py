@@ -26,7 +26,7 @@ def get_pickups(
     if status:
         query = query.filter(PickupRequest.status == status)
     
-    # Order by: today's scheduled first, then future dates ascending, then past, then unscheduled
+    # Order by: today's scheduled first, then future dates, then past, then unscheduled
     today = date.today()
     query = query.order_by(
         case(
@@ -35,10 +35,7 @@ def get_pickups(
             (PickupRequest.scheduled_start.is_(None), 3),             # Unscheduled last
             else_=2                                                    # Past third
         ),
-        case(
-            (PickupRequest.scheduled_start > datetime.now(), PickupRequest.scheduled_start),  # Future: ascending
-            else_=PickupRequest.scheduled_start.desc()  # Past: descending (most recent first)
-        )
+        PickupRequest.scheduled_start.asc().nullslast()  # Sort by date ascending, nulls last
     )
     
     return query.offset(skip).limit(limit).all()
