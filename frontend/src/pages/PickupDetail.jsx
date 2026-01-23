@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { pickupsAPI } from '../services/api';
+import { useOffline } from '../context/OfflineContext';
 import { openInMaps } from '../utils/maps';
 import './TaskDetail.css'; // Reuse TaskDetail styles
 
 const PickupDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { isOnline, getCachedPickup } = useOffline();
   const [pickup, setPickup] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -15,10 +17,32 @@ const PickupDetail = () => {
 
   const fetchPickup = async () => {
     try {
-      const response = await pickupsAPI.get(id);
-      setPickup(response.data);
+      let pickupData;
+
+      if (isOnline) {
+        const response = await pickupsAPI.get(id);
+        pickupData = response.data;
+      } else {
+        // Offline: load from cache
+        pickupData = await getCachedPickup(id);
+      }
+
+      if (!pickupData) {
+        setError('Pickup request not found');
+        return;
+      }
+
+      setPickup(pickupData);
     } catch (err) {
       console.error('Error fetching pickup:', err);
+      // If API call fails, try cache as fallback
+      if (isOnline) {
+        const cachedPickup = await getCachedPickup(id);
+        if (cachedPickup) {
+          setPickup(cachedPickup);
+          return;
+        }
+      }
       setError('Pickup request not found');
     } finally {
       setLoading(false);
@@ -27,7 +51,7 @@ const PickupDetail = () => {
 
   useEffect(() => {
     fetchPickup();
-  }, [id]);
+  }, [id, isOnline]);
 
   const handleApprove = async () => {
     if (!confirm('Approve this pickup request?')) return;
@@ -88,7 +112,8 @@ const PickupDetail = () => {
 
   const formatDate = (dateString) => {
     if (!dateString) return 'Not set';
-    return new Date(dateString).toLocaleDateString('en-US', {
+    return new Date(dateString).toLocaleString('en-US', {
+      timeZone: 'America/New_York',
       weekday: 'short',
       month: 'short',
       day: 'numeric',

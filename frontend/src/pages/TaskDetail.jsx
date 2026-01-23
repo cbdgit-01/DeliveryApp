@@ -13,7 +13,7 @@ const TaskDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { isOnline, queueAction, updateCachedTask, getCachedTasks } = useOffline();
+  const { isOnline, queueAction, updateCachedTask, getCachedTask } = useOffline();
   const [task, setTask] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -44,37 +44,60 @@ const TaskDetail = () => {
 
   useEffect(() => {
     fetchTask();
-    fetchUpcomingEvents();
-  }, [id]);
+    if (isOnline) {
+      fetchUpcomingEvents();
+    }
+  }, [id, isOnline]);
 
   const fetchTask = async () => {
     try {
-      const response = await tasksAPI.get(id);
-      setTask(response.data);
-      
-      if (response.data.scheduled_start) {
+      let taskData;
+
+      if (isOnline) {
+        const response = await tasksAPI.get(id);
+        taskData = response.data;
+      } else {
+        // Offline: load from cache
+        taskData = await getCachedTask(id);
+      }
+
+      if (!taskData) {
+        setTask(null);
+        return;
+      }
+
+      setTask(taskData);
+
+      if (taskData.scheduled_start) {
         setScheduleData({
-          scheduled_start: formatDateTimeLocal(response.data.scheduled_start),
-          scheduled_end: formatDateTimeLocal(response.data.scheduled_end),
+          scheduled_start: formatDateTimeLocal(taskData.scheduled_start),
+          scheduled_end: formatDateTimeLocal(taskData.scheduled_end),
         });
       }
-      
+
       // Initialize edit data
       setEditData({
-        customer_name: response.data.customer_name || '',
-        customer_phone: response.data.customer_phone || '',
-        customer_email: response.data.customer_email || '',
-        delivery_address_line1: response.data.delivery_address_line1 || '',
-        delivery_address_line2: response.data.delivery_address_line2 || '',
-        delivery_city: response.data.delivery_city || '',
-        delivery_state: response.data.delivery_state || '',
-        delivery_zip: response.data.delivery_zip || '',
-        item_title: response.data.item_title || '',
-        item_description: response.data.item_description || '',
-        delivery_notes: response.data.delivery_notes || '',
+        customer_name: taskData.customer_name || '',
+        customer_phone: taskData.customer_phone || '',
+        customer_email: taskData.customer_email || '',
+        delivery_address_line1: taskData.delivery_address_line1 || '',
+        delivery_address_line2: taskData.delivery_address_line2 || '',
+        delivery_city: taskData.delivery_city || '',
+        delivery_state: taskData.delivery_state || '',
+        delivery_zip: taskData.delivery_zip || '',
+        item_title: taskData.item_title || '',
+        item_description: taskData.item_description || '',
+        delivery_notes: taskData.delivery_notes || '',
       });
     } catch (error) {
       console.error('Error fetching task:', error);
+      // If API call fails, try cache as fallback
+      if (isOnline) {
+        const cachedTask = await getCachedTask(id);
+        if (cachedTask) {
+          setTask(cachedTask);
+        }
+      }
     } finally {
       setLoading(false);
     }
@@ -383,6 +406,7 @@ const TaskDetail = () => {
     if (!dateString) return 'Not scheduled';
     const date = new Date(dateString);
     return date.toLocaleString('en-US', {
+      timeZone: 'America/New_York',
       weekday: 'long',
       month: 'long',
       day: 'numeric',
@@ -765,7 +789,7 @@ const TaskDetail = () => {
                   <div className="timeline-item signature">
                     <div className="timeline-icon">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
                       </svg>
                     </div>
                     <div className="timeline-content">

@@ -133,6 +133,16 @@ export const OfflineProvider = ({ children }) => {
     }
   }, []);
 
+  // Get a single cached task by ID
+  const getCachedTask = useCallback(async (id) => {
+    try {
+      return await offlineService.getCachedTask(parseInt(id));
+    } catch (error) {
+      console.error('Failed to get cached task:', error);
+      return null;
+    }
+  }, []);
+
   // Update a cached task locally
   const updateCachedTask = useCallback(async (id, updates) => {
     try {
@@ -162,6 +172,16 @@ export const OfflineProvider = ({ children }) => {
     }
   }, []);
 
+  // Get a single cached pickup by ID
+  const getCachedPickup = useCallback(async (id) => {
+    try {
+      return await offlineService.getCachedPickup(parseInt(id));
+    } catch (error) {
+      console.error('Failed to get cached pickup:', error);
+      return null;
+    }
+  }, []);
+
   // Update a cached pickup locally
   const updateCachedPickup = useCallback(async (id, updates) => {
     try {
@@ -181,9 +201,11 @@ export const OfflineProvider = ({ children }) => {
     queueAction,
     cacheTasks,
     getCachedTasks,
+    getCachedTask,
     updateCachedTask,
     cachePickups,
     getCachedPickups,
+    getCachedPickup,
     updateCachedPickup,
   };
 
