@@ -96,9 +96,14 @@ const Dashboard = () => {
 
   const formatDate = (dateString) => {
     if (!dateString) return 'Not scheduled';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
+    // Ensure the date is treated as UTC by appending 'Z' if no timezone specified
+    const utcString = dateString.endsWith('Z') || dateString.includes('+')
+      ? dateString
+      : dateString + 'Z';
+    const date = new Date(utcString);
+    return date.toLocaleString('en-US', {
+      timeZone: 'America/New_York',
+      month: 'short',
       day: 'numeric',
       hour: 'numeric',
       minute: '2-digit'

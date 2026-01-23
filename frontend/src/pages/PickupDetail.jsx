@@ -112,7 +112,11 @@ const PickupDetail = () => {
 
   const formatDate = (dateString) => {
     if (!dateString) return 'Not set';
-    return new Date(dateString).toLocaleString('en-US', {
+    // Ensure the date is treated as UTC by appending 'Z' if no timezone specified
+    const utcString = dateString.endsWith('Z') || dateString.includes('+')
+      ? dateString
+      : dateString + 'Z';
+    return new Date(utcString).toLocaleString('en-US', {
       timeZone: 'America/New_York',
       weekday: 'short',
       month: 'short',

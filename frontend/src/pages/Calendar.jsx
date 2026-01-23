@@ -691,6 +691,7 @@ const Calendar = () => {
                 <label>Time</label>
                 <div>
                   {selectedEvent.start.toLocaleString('en-US', {
+                    timeZone: 'America/New_York',
                     weekday: 'long',
                     month: 'long',
                     day: 'numeric',

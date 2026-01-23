@@ -404,7 +404,11 @@ const TaskDetail = () => {
 
   const formatDate = (dateString) => {
     if (!dateString) return 'Not scheduled';
-    const date = new Date(dateString);
+    // Ensure the date is treated as UTC by appending 'Z' if no timezone specified
+    const utcString = dateString.endsWith('Z') || dateString.includes('+')
+      ? dateString
+      : dateString + 'Z';
+    const date = new Date(utcString);
     return date.toLocaleString('en-US', {
       timeZone: 'America/New_York',
       weekday: 'long',
