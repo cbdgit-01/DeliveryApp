@@ -1,8 +1,8 @@
 /**
- * Google Maps Directions API wrapper for calculating ETA
+ * ETA calculation using backend proxy to Google Maps Distance Matrix API
  */
 
-const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+import api from '../services/api';
 
 /**
  * Get estimated travel time from current location to destination
@@ -12,31 +12,22 @@ const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
  * @returns {Promise<string>} - Human-readable ETA (e.g., "25 minutes")
  */
 export const getETA = async (originLat, originLng, destination) => {
-  if (!GOOGLE_MAPS_API_KEY) {
-    console.warn('Google Maps API key not configured. Using fallback ETA.');
-    return getFallbackETA();
-  }
-
   try {
-    // Use CORS proxy or backend endpoint since Directions API doesn't support browser CORS
-    // For now, we'll use the Distance Matrix API which can work with JSONP
-    const encodedDest = encodeURIComponent(destination);
-    const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${originLat},${originLng}&destinations=${encodedDest}&key=${GOOGLE_MAPS_API_KEY}`;
+    const response = await api.get('/api/directions/eta', {
+      params: {
+        origin_lat: originLat,
+        origin_lng: originLng,
+        destination: destination,
+      },
+    });
 
-    const response = await fetch(url);
+    const { duration, status } = response.data;
 
-    if (!response.ok) {
-      throw new Error('API request failed');
-    }
-
-    const data = await response.json();
-
-    if (data.status === 'OK' && data.rows[0]?.elements[0]?.status === 'OK') {
-      const duration = data.rows[0].elements[0].duration.text;
+    if (status === 'ok' || status === 'fallback') {
       return duration;
     }
 
-    throw new Error('Could not calculate route');
+    return getFallbackETA();
   } catch (error) {
     console.error('Error getting ETA:', error);
     return getFallbackETA();

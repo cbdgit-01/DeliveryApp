@@ -19,7 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from database import engine, Base, SessionLocal
-from routers import auth_router, tasks_router, calendar_router, webhooks_router, schedule_router, items_router, pickups_router, sms_router, uploads_router
+from routers import auth_router, tasks_router, calendar_router, webhooks_router, schedule_router, items_router, pickups_router, sms_router, uploads_router, directions_router
 from config import get_settings
 from models import User
 from auth import get_password_hash
@@ -134,6 +134,7 @@ app.include_router(items_router.router)
 app.include_router(pickups_router.router)
 app.include_router(sms_router.router)
 app.include_router(uploads_router.router)
+app.include_router(directions_router.router)
 
 
 @app.get("/health")
