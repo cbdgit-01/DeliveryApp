@@ -9,11 +9,9 @@ const PickupDashboard = () => {
   const { isOnline, cachePickups, getCachedPickups } = useOffline();
   const [pickups, setPickups] = useState([]);
   const [stats, setStats] = useState({
-    pending_review: 0,
-    approved: 0,
+    pending: 0,
     scheduled: 0,
     completed: 0,
-    declined: 0,
   });
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('active');
@@ -43,11 +41,9 @@ const PickupDashboard = () => {
 
         // Calculate stats from cached data
         const cachedStats = {
-          pending_review: cachedPickups.filter(p => p.status === 'pending_review').length,
-          approved: cachedPickups.filter(p => p.status === 'approved').length,
+          pending: cachedPickups.filter(p => p.status === 'pending').length,
           scheduled: cachedPickups.filter(p => p.status === 'scheduled').length,
           completed: cachedPickups.filter(p => p.status === 'completed').length,
-          declined: cachedPickups.filter(p => p.status === 'declined').length,
         };
         setStats(cachedStats);
       }
@@ -90,8 +86,8 @@ const PickupDashboard = () => {
 
     // Apply status filter
     if (filter === 'active') {
-      filtered = filtered.filter(p => 
-        ['pending_review', 'approved', 'scheduled'].includes(p.status)
+      filtered = filtered.filter(p =>
+        ['pending', 'scheduled'].includes(p.status)
       );
     } else if (filter !== 'all') {
       filtered = filtered.filter(p => p.status === filter);
@@ -113,29 +109,37 @@ const PickupDashboard = () => {
 
   const getStatusBadgeClass = (status) => {
     switch (status) {
-      case 'pending_review': return 'status-pending';
-      case 'approved': return 'status-scheduled';
-      case 'scheduled': return 'status-delivered';
+      case 'pending': return 'status-pending';
+      case 'scheduled': return 'status-scheduled';
       case 'completed': return 'status-paid';
-      case 'declined': return 'status-cancelled';
       default: return 'status-pending';
     }
   };
 
   const getStatusLabel = (status) => {
     switch (status) {
-      case 'pending_review': return 'Pending Review';
-      case 'approved': return 'Approved';
+      case 'pending': return 'Pending';
       case 'scheduled': return 'Scheduled';
       case 'completed': return 'Completed';
-      case 'declined': return 'Declined';
       default: return status;
     }
   };
 
+  // For user-entered dates (scheduled times) - display as entered, no UTC conversion
   const formatDate = (dateString) => {
     if (!dateString) return 'Not scheduled';
-    // Ensure the date is treated as UTC by appending 'Z' if no timezone specified
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+  };
+
+  // For system timestamps (completed_at) - stored in UTC, convert to EST
+  const formatSystemDate = (dateString) => {
+    if (!dateString) return '';
     const utcString = dateString.endsWith('Z') || dateString.includes('+')
       ? dateString
       : dateString + 'Z';
@@ -171,14 +175,10 @@ const PickupDashboard = () => {
 
       <div className="stats-grid">
         <div className="stat-card pending">
-          <div className="stat-number">{stats.pending_review}</div>
-          <div className="stat-label">Pending Review</div>
+          <div className="stat-number">{stats.pending}</div>
+          <div className="stat-label">Pending</div>
         </div>
         <div className="stat-card scheduled">
-          <div className="stat-number">{stats.approved}</div>
-          <div className="stat-label">Approved</div>
-        </div>
-        <div className="stat-card delivered">
           <div className="stat-number">{stats.scheduled}</div>
           <div className="stat-label">Scheduled</div>
         </div>
@@ -186,12 +186,6 @@ const PickupDashboard = () => {
           <div className="stat-number">{stats.completed}</div>
           <div className="stat-label">Completed</div>
         </div>
-        {stats.declined > 0 && (
-          <div className="stat-card cancelled">
-            <div className="stat-number">{stats.declined}</div>
-            <div className="stat-label">Declined</div>
-          </div>
-        )}
       </div>
 
       <div className="dashboard-controls">
@@ -212,16 +206,10 @@ const PickupDashboard = () => {
             Active
           </button>
           <button
-            className={`filter-btn ${filter === 'pending_review' ? 'active' : ''}`}
-            onClick={() => setFilter('pending_review')}
+            className={`filter-btn ${filter === 'pending' ? 'active' : ''}`}
+            onClick={() => setFilter('pending')}
           >
-            Pending Review
-          </button>
-          <button
-            className={`filter-btn ${filter === 'approved' ? 'active' : ''}`}
-            onClick={() => setFilter('approved')}
-          >
-            Approved
+            Pending
           </button>
           <button
             className={`filter-btn ${filter === 'scheduled' ? 'active' : ''}`}
@@ -234,12 +222,6 @@ const PickupDashboard = () => {
             onClick={() => setFilter('completed')}
           >
             Completed
-          </button>
-          <button
-            className={`filter-btn ${filter === 'declined' ? 'active' : ''}`}
-            onClick={() => setFilter('declined')}
-          >
-            Declined
           </button>
         </div>
       </div>
@@ -294,7 +276,7 @@ const PickupDashboard = () => {
                     </span>
                     <span>
                       {pickup.status === 'completed'
-                        ? formatDate(pickup.completed_at)
+                        ? formatSystemDate(pickup.completed_at)
                         : formatDate(pickup.scheduled_start)}
                     </span>
                   </div>

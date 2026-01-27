@@ -85,8 +85,6 @@ export const pickupsAPI = {
   update: (id, data) => api.patch(`/api/pickups/${id}`, data),
   delete: (id) => api.delete(`/api/pickups/${id}`),
   getStats: () => api.get('/api/pickups/stats'),
-  approve: (id, staffNotes) => api.post(`/api/pickups/${id}/approve`, null, { params: { staff_notes: staffNotes } }),
-  decline: (id, reason) => api.post(`/api/pickups/${id}/decline`, null, { params: { reason } }),
   complete: (id) => api.post(`/api/pickups/${id}/complete`),
 };
 

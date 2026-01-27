@@ -402,9 +402,24 @@ const TaskDetail = () => {
     setIsEditing(false);
   };
 
+  // For user-entered dates (scheduled times) - display as entered, no UTC conversion
   const formatDate = (dateString) => {
     if (!dateString) return 'Not scheduled';
-    // Ensure the date is treated as UTC by appending 'Z' if no timezone specified
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  };
+
+  // For system timestamps (delivered_at, paid_at, created_at) - stored in UTC, convert to EST
+  const formatSystemDate = (dateString) => {
+    if (!dateString) return '';
+    // Append 'Z' to treat as UTC if no timezone specified
     const utcString = dateString.endsWith('Z') || dateString.includes('+')
       ? dateString
       : dateString + 'Z';
@@ -772,7 +787,7 @@ const TaskDetail = () => {
                     </div>
                     <div className="timeline-content">
                       <label>Delivered</label>
-                      <div className="info-value">{formatDate(task.delivered_at)}</div>
+                      <div className="info-value">{formatSystemDate(task.delivered_at)}</div>
                     </div>
                   </div>
                 )}
@@ -785,7 +800,7 @@ const TaskDetail = () => {
                     </div>
                     <div className="timeline-content">
                       <label>Payment Received</label>
-                      <div className="info-value">{formatDate(task.paid_at)}</div>
+                      <div className="info-value">{formatSystemDate(task.paid_at)}</div>
                     </div>
                   </div>
                 )}

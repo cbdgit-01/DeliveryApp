@@ -361,7 +361,7 @@ def create_delivery_task(conversation: SMSConversation, db: Session) -> Delivery
 def create_pickup_request(conversation: SMSConversation, db: Session) -> PickupRequest:
     """Create a PickupRequest from completed SMS conversation"""
     pickup = PickupRequest(
-        status=PickupStatus.pending_review,
+        status=PickupStatus.pending,
         customer_name=conversation.customer_name,
         customer_phone=format_phone_for_storage(conversation.callback_phone or conversation.phone_number),
         pickup_address_line1=conversation.address_line1,

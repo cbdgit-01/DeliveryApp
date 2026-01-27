@@ -94,15 +94,11 @@ const Dashboard = () => {
     return `status-badge status-${status}`;
   };
 
+  // For user-entered dates (scheduled times) - display as entered, no UTC conversion
   const formatDate = (dateString) => {
     if (!dateString) return 'Not scheduled';
-    // Ensure the date is treated as UTC by appending 'Z' if no timezone specified
-    const utcString = dateString.endsWith('Z') || dateString.includes('+')
-      ? dateString
-      : dateString + 'Z';
-    const date = new Date(utcString);
+    const date = new Date(dateString);
     return date.toLocaleString('en-US', {
-      timeZone: 'America/New_York',
       month: 'short',
       day: 'numeric',
       hour: 'numeric',

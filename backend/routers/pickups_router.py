@@ -134,53 +134,6 @@ def delete_pickup(
     return {"message": "Pickup request deleted"}
 
 
-@router.post("/{pickup_id}/approve", response_model=PickupRequestResponse)
-def approve_pickup(
-    pickup_id: int,
-    staff_notes: Optional[str] = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["scheduler", "admin"]))
-):
-    """Approve a pickup request"""
-    pickup = db.query(PickupRequest).filter(PickupRequest.id == pickup_id).first()
-    if not pickup:
-        raise HTTPException(status_code=404, detail="Pickup request not found")
-    
-    if pickup.status != PickupStatus.pending_review:
-        raise HTTPException(status_code=400, detail="Can only approve pending requests")
-    
-    pickup.status = PickupStatus.approved
-    if staff_notes:
-        pickup.staff_notes = staff_notes
-    
-    db.commit()
-    db.refresh(pickup)
-    return pickup
-
-
-@router.post("/{pickup_id}/decline", response_model=PickupRequestResponse)
-def decline_pickup(
-    pickup_id: int,
-    reason: str = Query(..., description="Reason for declining"),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["scheduler", "admin"]))
-):
-    """Decline a pickup request"""
-    pickup = db.query(PickupRequest).filter(PickupRequest.id == pickup_id).first()
-    if not pickup:
-        raise HTTPException(status_code=404, detail="Pickup request not found")
-    
-    if pickup.status not in [PickupStatus.pending_review, PickupStatus.approved]:
-        raise HTTPException(status_code=400, detail="Cannot decline this request")
-    
-    pickup.status = PickupStatus.declined
-    pickup.decline_reason = reason
-    
-    db.commit()
-    db.refresh(pickup)
-    return pickup
-
-
 @router.post("/{pickup_id}/complete", response_model=PickupRequestResponse)
 def complete_pickup(
     pickup_id: int,

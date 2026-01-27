@@ -53,35 +53,6 @@ const PickupDetail = () => {
     fetchPickup();
   }, [id, isOnline]);
 
-  const handleApprove = async () => {
-    if (!confirm('Approve this pickup request?')) return;
-    setUpdating(true);
-    try {
-      await pickupsAPI.approve(id);
-      await fetchPickup();
-    } catch (err) {
-      console.error('Error approving pickup:', err);
-      alert('Failed to approve pickup');
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const handleDecline = async () => {
-    const reason = prompt('Enter reason for declining:');
-    if (!reason) return;
-    setUpdating(true);
-    try {
-      await pickupsAPI.decline(id, reason);
-      await fetchPickup();
-    } catch (err) {
-      console.error('Error declining pickup:', err);
-      alert('Failed to decline pickup');
-    } finally {
-      setUpdating(false);
-    }
-  };
-
   const handleComplete = async () => {
     if (!confirm('Mark this pickup as completed?')) return;
     setUpdating(true);
@@ -110,9 +81,22 @@ const PickupDetail = () => {
     }
   };
 
+  // For user-entered dates (scheduled times) - display as entered, no UTC conversion
   const formatDate = (dateString) => {
     if (!dateString) return 'Not set';
-    // Ensure the date is treated as UTC by appending 'Z' if no timezone specified
+    return new Date(dateString).toLocaleString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  };
+
+  // For system timestamps (created_at, completed_at) - stored in UTC, convert to EST
+  const formatSystemDate = (dateString) => {
+    if (!dateString) return '';
     const utcString = dateString.endsWith('Z') || dateString.includes('+')
       ? dateString
       : dateString + 'Z';
@@ -129,22 +113,18 @@ const PickupDetail = () => {
 
   const getStatusBadgeClass = (status) => {
     switch (status) {
-      case 'pending_review': return 'status-pending';
-      case 'approved': return 'status-scheduled';
-      case 'scheduled': return 'status-delivered';
+      case 'pending': return 'status-pending';
+      case 'scheduled': return 'status-scheduled';
       case 'completed': return 'status-paid';
-      case 'declined': return 'status-cancelled';
       default: return 'status-pending';
     }
   };
 
   const getStatusLabel = (status) => {
     switch (status) {
-      case 'pending_review': return 'Pending Review';
-      case 'approved': return 'Approved';
+      case 'pending': return 'Pending';
       case 'scheduled': return 'Scheduled';
       case 'completed': return 'Completed';
-      case 'declined': return 'Declined';
       default: return status;
     }
   };
@@ -298,7 +278,7 @@ const PickupDetail = () => {
               <div className="timeline-dot pending"></div>
               <div className="timeline-content">
                 <div className="timeline-label">Created</div>
-                <div className="timeline-date">{formatDate(pickup.created_at)}</div>
+                <div className="timeline-date">{formatSystemDate(pickup.created_at)}</div>
               </div>
             </div>
             {pickup.scheduled_start && (
@@ -315,7 +295,7 @@ const PickupDetail = () => {
                 <div className="timeline-dot paid"></div>
                 <div className="timeline-content">
                   <div className="timeline-label">Completed</div>
-                  <div className="timeline-date">{formatDate(pickup.completed_at)}</div>
+                  <div className="timeline-date">{formatSystemDate(pickup.completed_at)}</div>
                 </div>
               </div>
             )}
@@ -323,27 +303,14 @@ const PickupDetail = () => {
         </div>
 
         {/* Actions */}
-        {pickup.status !== 'completed' && pickup.status !== 'declined' && (
+        {pickup.status !== 'completed' && (
           <div className="card">
             <h2>Actions</h2>
             <div className="action-buttons">
-              {pickup.status === 'pending_review' && (
-                <>
-                  <button
-                    className="btn btn-success btn-full"
-                    onClick={handleApprove}
-                    disabled={updating}
-                  >
-                    ✓ Approve Request
-                  </button>
-                  <button
-                    className="btn btn-danger btn-full"
-                    onClick={handleDecline}
-                    disabled={updating}
-                  >
-                    ✕ Decline Request
-                  </button>
-                </>
+              {pickup.status === 'pending' && (
+                <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-xs)', textAlign: 'center' }}>
+                  Schedule this pickup from the calendar to continue.
+                </p>
               )}
               {pickup.status === 'scheduled' && (
                 <button
@@ -351,28 +318,20 @@ const PickupDetail = () => {
                   onClick={handleComplete}
                   disabled={updating}
                 >
-                  ✓ Mark as Completed
+                  Mark as Completed
                 </button>
-              )}
-              {pickup.status === 'approved' && (
-                <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-xs)', textAlign: 'center' }}>
-                  Schedule this pickup from the calendar to continue.
-                </p>
               )}
             </div>
           </div>
         )}
 
-        {/* Show info for completed/declined pickups */}
-        {(pickup.status === 'completed' || pickup.status === 'declined') && (
+        {/* Show info for completed pickups */}
+        {pickup.status === 'completed' && (
           <div className="card">
             <h2>Actions</h2>
             <div className="action-buttons">
               <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-xs)', textAlign: 'center' }}>
-                {pickup.status === 'completed' 
-                  ? 'This pickup has been completed.'
-                  : 'This pickup was declined.'
-                }
+                This pickup has been completed.
                 <br />
                 Use the menu (⋮) to delete if needed.
               </p>

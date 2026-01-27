@@ -18,11 +18,9 @@ class TaskStatus(str, enum.Enum):
 
 
 class PickupStatus(str, enum.Enum):
-    pending_review = "pending_review"   # Awaiting staff review
-    approved = "approved"               # Approved, ready to schedule
+    pending = "pending"                 # New pickup, not yet scheduled
     scheduled = "scheduled"             # Pickup scheduled
     completed = "completed"             # Pickup completed
-    declined = "declined"               # Request declined
 
 
 class InviteStatus(str, enum.Enum):
@@ -120,7 +118,7 @@ class PickupRequest(Base):
     __tablename__ = "pickup_requests"
     
     id = Column(Integer, primary_key=True, index=True)
-    status = Column(Enum(PickupStatus), default=PickupStatus.pending_review, nullable=False)
+    status = Column(Enum(PickupStatus), default=PickupStatus.pending, nullable=False)
     
     # Customer information
     customer_name = Column(String, nullable=False)

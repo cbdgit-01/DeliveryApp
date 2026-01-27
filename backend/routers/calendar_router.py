@@ -25,13 +25,11 @@ def get_event_color(status: TaskStatus) -> tuple:
 def get_pickup_event_color(status: PickupStatus) -> tuple:
     """Get color for pickup calendar event based on status"""
     colors = {
-        PickupStatus.pending_review: ("#a78bfa", "#8b5cf6"),  # Purple - pending review
-        PickupStatus.approved: ("#a78bfa", "#8b5cf6"),        # Purple - approved
-        PickupStatus.scheduled: ("#a78bfa", "#8b5cf6"),       # Purple - scheduled
+        PickupStatus.pending: ("#f87171", "#ef4444"),         # Red - pending
+        PickupStatus.scheduled: ("#f87171", "#ef4444"),       # Red - scheduled
         PickupStatus.completed: ("#4ade80", "#22c55e"),       # Green - completed
-        PickupStatus.declined: ("#64748b", "#475569"),        # Grey - declined
     }
-    return colors.get(status, ("#a78bfa", "#8b5cf6"))  # Purple default
+    return colors.get(status, ("#f87171", "#ef4444"))  # Red default
 
 
 @router.get("", response_model=List[dict])
