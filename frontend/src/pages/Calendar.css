@@ -68,12 +68,15 @@
   padding: 6px;
 }
 
-.nav-month-title {
-  font-size: var(--font-size-md);
-  font-weight: 500;
-  color: var(--text-primary);
-  min-width: 140px;
-  text-align: center;
+/* Week Navigation Bar (below month title) */
+.week-nav-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .calendar-container {

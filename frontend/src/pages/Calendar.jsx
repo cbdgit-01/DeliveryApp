@@ -418,22 +418,6 @@ const Calendar = () => {
         <div className="calendar-title">
           <h1>Calendar</h1>
         </div>
-        <div className="calendar-nav">
-          <button className="nav-btn nav-arrow" onClick={navigatePrev} title="Previous week">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
-            </svg>
-          </button>
-          <span className="nav-month-title">{currentTitle || 'Loading...'}</span>
-          <button className="nav-btn nav-arrow" onClick={navigateNext} title="Next week">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z"/>
-            </svg>
-          </button>
-          <button className="nav-btn today-btn" onClick={navigateToday}>
-            Today
-          </button>
-        </div>
       </div>
 
       <div className="calendar-container">
@@ -501,11 +485,31 @@ const Calendar = () => {
           {/* Week View */}
           {!selectedDate && (
             <div className="calendar-wrapper week-view">
+              <div className="week-nav-bar">
+                <button className="nav-btn nav-arrow" onClick={navigatePrev} title="Previous week">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+                  </svg>
+                </button>
+                <button className="nav-btn today-btn" onClick={navigateToday}>
+                  Today
+                </button>
+                <button className="nav-btn nav-arrow" onClick={navigateNext} title="Next week">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z"/>
+                  </svg>
+                </button>
+              </div>
               <FullCalendar
                 ref={weekCalendarRef}
                 plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
                 initialView="timeGridWeek"
-                headerToolbar={false}
+                headerToolbar={{
+                  left: '',
+                  center: 'title',
+                  right: '',
+                }}
+                titleFormat={{ year: 'numeric', month: 'long' }}
                 height="calc(100vh - 160px)"
                 events={calendarEvents}
                 eventClick={handleEventClick}

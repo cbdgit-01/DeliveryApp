@@ -125,11 +125,11 @@ def update_pickup(
     # If status changed to completed, set completed_at timestamp
     if old_status != PickupStatus.completed and pickup.status == PickupStatus.completed:
         pickup.completed_at = datetime.now(timezone.utc)
-    
-    # If scheduling info added and status is approved, update to scheduled
-    if pickup.scheduled_start and pickup.status == PickupStatus.approved:
+
+    # If scheduling info added and status is still pending, update to scheduled
+    if pickup.scheduled_start and pickup.status == PickupStatus.pending:
         pickup.status = PickupStatus.scheduled
-    
+
     db.commit()
     db.refresh(pickup)
     return pickup
