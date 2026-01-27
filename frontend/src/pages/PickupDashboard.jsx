@@ -100,7 +100,7 @@ const PickupDashboard = () => {
         p.customer_name.toLowerCase().includes(search) ||
         p.item_description.toLowerCase().includes(search) ||
         (p.customer_email && p.customer_email.toLowerCase().includes(search)) ||
-        p.customer_phone.includes(search)
+        (p.customer_phone && p.customer_phone.includes(search))
       );
     }
 
@@ -262,10 +262,12 @@ const PickupDashboard = () => {
                   <span className="task-detail-label">Address</span>
                   <span>{pickup.pickup_city}, {pickup.pickup_state}</span>
                 </div>
-                <div className="task-detail">
-                  <span className="task-detail-label">Phone</span>
-                  <span>{pickup.customer_phone}</span>
-                </div>
+                {pickup.customer_phone && (
+                  <div className="task-detail">
+                    <span className="task-detail-label">Phone</span>
+                    <span>{pickup.customer_phone}</span>
+                  </div>
+                )}
               </div>
 
               <div className="task-card-actions">

@@ -51,11 +51,28 @@ def get_pickup_stats(
     current_user: User = Depends(get_current_user)
 ):
     """Get pickup statistics by status"""
-    stats = {}
-    for status in PickupStatus:
-        count = db.query(PickupRequest).filter(PickupRequest.status == status).count()
-        stats[status.value] = count
-    return stats
+    # Count completed pickups
+    completed_count = db.query(PickupRequest).filter(
+        PickupRequest.status == PickupStatus.completed
+    ).count()
+
+    # Count scheduled pickups (status is scheduled OR has scheduled_start but not completed)
+    scheduled_count = db.query(PickupRequest).filter(
+        PickupRequest.status != PickupStatus.completed,
+        PickupRequest.scheduled_start.isnot(None)
+    ).count()
+
+    # Count pending pickups (not completed and not scheduled)
+    pending_count = db.query(PickupRequest).filter(
+        PickupRequest.status != PickupStatus.completed,
+        PickupRequest.scheduled_start.is_(None)
+    ).count()
+
+    return {
+        "pending": pending_count,
+        "scheduled": scheduled_count,
+        "completed": completed_count
+    }
 
 
 @router.get("/{pickup_id}", response_model=PickupRequestResponse)

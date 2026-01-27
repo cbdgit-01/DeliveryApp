@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -10,7 +10,6 @@ import './Calendar.css';
 const Calendar = () => {
   const weekCalendarRef = useRef(null);
   const dayCalendarRef = useRef(null);
-  const calendarPageRef = useRef(null);
   const navigate = useNavigate();
   const [unscheduledDeliveries, setUnscheduledDeliveries] = useState([]);
   const [unscheduledPickups, setUnscheduledPickups] = useState([]);
@@ -18,16 +17,9 @@ const Calendar = () => {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showEventModal, setShowEventModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
-  const [currentWeek, setCurrentWeek] = useState(new Date());
-  const [swipeOffset, setSwipeOffset] = useState(0);
-  const [isAnimating, setIsAnimating] = useState(false);
+  const [currentTitle, setCurrentTitle] = useState('');
   const deliveryDraggableRef = useRef(null);
   const pickupDraggableRef = useRef(null);
-
-  // Touch/swipe tracking
-  const touchStartX = useRef(null);
-  const touchStartY = useRef(null);
-  const isSwiping = useRef(false);
 
   useEffect(() => {
     fetchUnscheduledDeliveries();
@@ -41,7 +33,7 @@ const Calendar = () => {
       start.setMonth(start.getMonth() - 3);
       const end = new Date();
       end.setMonth(end.getMonth() + 6);
-      
+
       const response = await calendarAPI.getEvents(start, end);
       const eventsWithStringIds = response.data.map(event => ({
         ...event,
@@ -102,8 +94,8 @@ const Calendar = () => {
           title: data.title,
           duration: '01:00:00',
           extendedProps: data.extendedProps,
-          backgroundColor: '#9334ea',
-          borderColor: '#9334ea'
+          backgroundColor: '#ea4335',
+          borderColor: '#ea4335'
         };
       }
     });
@@ -133,15 +125,10 @@ const Calendar = () => {
     }
   };
 
-  // Click event in day view shows modal
+  // Click event shows modal
   const handleEventClick = (clickInfo) => {
     setSelectedEvent(clickInfo.event);
     setShowEventModal(true);
-  };
-
-  // Click on a day in month view opens day view
-  const handleDateClick = (dateInfo) => {
-    setSelectedDate(dateInfo.date);
   };
 
   const toLocalISOString = (date) => {
@@ -176,9 +163,9 @@ const Calendar = () => {
           scheduled_end: endStr,
         });
       }
-      
-      setCalendarEvents(prev => prev.map(event => 
-        String(event.id) === String(eventId) 
+
+      setCalendarEvents(prev => prev.map(event =>
+        String(event.id) === String(eventId)
           ? { ...event, start: startStr, end: endStr }
           : event
       ));
@@ -211,9 +198,9 @@ const Calendar = () => {
           scheduled_end: endStr,
         });
       }
-      
-      setCalendarEvents(prev => prev.map(event => 
-        String(event.id) === String(eventId) 
+
+      setCalendarEvents(prev => prev.map(event =>
+        String(event.id) === String(eventId)
           ? { ...event, start: startStr, end: endStr }
           : event
       ));
@@ -256,8 +243,8 @@ const Calendar = () => {
         title: eventInfo.event.title,
         start: startStr,
         end: endStr,
-        backgroundColor: isPickup ? '#9334ea' : '#ea4335',
-        borderColor: isPickup ? '#9334ea' : '#ea4335',
+        backgroundColor: '#ea4335',
+        borderColor: '#ea4335',
         extendedProps: eventInfo.event.extendedProps
       };
       setCalendarEvents(prev => [...prev, newEvent]);
@@ -336,11 +323,42 @@ const Calendar = () => {
     }
   };
 
-  const handleTodayClick = () => {
+  // Navigation functions
+  const navigatePrev = () => {
+    if (selectedDate) {
+      const newDate = new Date(selectedDate);
+      newDate.setDate(newDate.getDate() - 1);
+      setSelectedDate(newDate);
+    } else if (weekCalendarRef.current) {
+      weekCalendarRef.current.getApi().prev();
+      updateTitle();
+    }
+  };
+
+  const navigateNext = () => {
+    if (selectedDate) {
+      const newDate = new Date(selectedDate);
+      newDate.setDate(newDate.getDate() + 1);
+      setSelectedDate(newDate);
+    } else if (weekCalendarRef.current) {
+      weekCalendarRef.current.getApi().next();
+      updateTitle();
+    }
+  };
+
+  const navigateToday = () => {
     if (selectedDate) {
       setSelectedDate(new Date());
     } else if (weekCalendarRef.current) {
       weekCalendarRef.current.getApi().today();
+      updateTitle();
+    }
+  };
+
+  const updateTitle = () => {
+    if (weekCalendarRef.current) {
+      const api = weekCalendarRef.current.getApi();
+      setCurrentTitle(api.view.title);
     }
   };
 
@@ -348,84 +366,30 @@ const Calendar = () => {
     setSelectedDate(null);
   };
 
-  // Navigate day view
-  const navigateDay = (direction) => {
-    if (selectedDate) {
-      const newDate = new Date(selectedDate);
-      newDate.setDate(newDate.getDate() + direction);
-      setSelectedDate(newDate);
-    }
+  // Handle clicking on column header to open day view
+  const handleDayHeaderClick = (date) => {
+    setSelectedDate(date);
   };
 
-  // Touch/swipe handlers for mobile navigation with continuous drag
-  const handleTouchStart = useCallback((e) => {
-    if (isAnimating) return;
-    touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
-    isSwiping.current = false;
-  }, [isAnimating]);
+  // Custom day header content with clickable dates
+  const renderDayHeaderContent = (arg) => {
+    const dayName = arg.date.toLocaleDateString('en-US', { weekday: 'short' });
+    const dayNum = arg.date.getDate();
+    const isToday = arg.isToday;
 
-  const handleTouchMove = useCallback((e) => {
-    if (touchStartX.current === null || isAnimating) return;
-    
-    const touchCurrentX = e.touches[0].clientX;
-    const touchCurrentY = e.touches[0].clientY;
-    const deltaX = touchCurrentX - touchStartX.current;
-    const deltaY = touchCurrentY - touchStartY.current;
-    
-    // Only track horizontal swipes
-    if (!isSwiping.current && Math.abs(deltaX) > 10 && Math.abs(deltaX) > Math.abs(deltaY)) {
-      isSwiping.current = true;
-    }
-    
-    if (isSwiping.current) {
-      // Limit the offset and add resistance at edges
-      const maxOffset = 150;
-      const resistance = 0.4;
-      let offset = deltaX * resistance;
-      offset = Math.max(-maxOffset, Math.min(maxOffset, offset));
-      setSwipeOffset(offset);
-    }
-  }, [isAnimating]);
-
-  const handleTouchEnd = useCallback((e) => {
-    if (touchStartX.current === null) return;
-    
-    const touchEndX = e.changedTouches[0].clientX;
-    const deltaX = touchEndX - touchStartX.current;
-    
-    // Animate back or navigate
-    const minSwipeDistance = 50;
-    if (isSwiping.current && Math.abs(deltaX) > minSwipeDistance) {
-      const direction = deltaX > 0 ? -1 : 1; // Swipe left = next, swipe right = prev
-      
-      // Animate the transition
-      setIsAnimating(true);
-      setSwipeOffset(direction > 0 ? -300 : 300);
-      
-      setTimeout(() => {
-        if (selectedDate) {
-          navigateDay(direction);
-        } else if (weekCalendarRef.current) {
-          const api = weekCalendarRef.current.getApi();
-          if (direction > 0) {
-            api.next();
-          } else {
-            api.prev();
-          }
-        }
-        setSwipeOffset(0);
-        setIsAnimating(false);
-      }, 200);
-    } else {
-      // Snap back
-      setSwipeOffset(0);
-    }
-    
-    touchStartX.current = null;
-    touchStartY.current = null;
-    isSwiping.current = false;
-  }, [selectedDate, isAnimating]);
+    return (
+      <button
+        className={`day-header-btn ${isToday ? 'today' : ''}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleDayHeaderClick(arg.date);
+        }}
+      >
+        <span className="day-name">{dayName}</span>
+        <span className="day-num">{dayNum}</span>
+      </button>
+    );
+  };
 
   // Format selected date for display
   const formatSelectedDate = (date) => {
@@ -437,32 +401,31 @@ const Calendar = () => {
     });
   };
 
-  // Get events for the selected day
-  const getDayEvents = () => {
-    if (!selectedDate) return [];
-    const dayStart = new Date(selectedDate);
-    dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(selectedDate);
-    dayEnd.setHours(23, 59, 59, 999);
-    
-    return calendarEvents.filter(event => {
-      const eventStart = new Date(event.start);
-      return eventStart >= dayStart && eventStart <= dayEnd;
-    });
+  // Update title when calendar loads
+  const handleDatesSet = () => {
+    updateTitle();
   };
 
   return (
-    <div 
-      className="calendar-page" 
-      ref={calendarPageRef}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-    >
+    <div className="calendar-page">
       <div className="calendar-header">
         <div className="calendar-title">
           <h1>Calendar</h1>
-          <span className="swipe-hint-header">Swipe to change week</span>
+        </div>
+        <div className="calendar-nav">
+          <button className="nav-btn" onClick={navigatePrev}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+            </svg>
+          </button>
+          <button className="nav-btn today-btn" onClick={navigateToday}>
+            Today
+          </button>
+          <button className="nav-btn" onClick={navigateNext}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z"/>
+            </svg>
+          </button>
         </div>
       </div>
 
@@ -530,13 +493,7 @@ const Calendar = () => {
         <div className="calendar-main">
           {/* Week View */}
           {!selectedDate && (
-            <div
-              className="calendar-wrapper week-view"
-              style={{
-                transform: `translateX(${swipeOffset}px)`,
-                transition: isAnimating ? 'transform 0.2s ease-out' : 'none'
-              }}
-            >
+            <div className="calendar-wrapper week-view">
               <FullCalendar
                 ref={weekCalendarRef}
                 plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -546,14 +503,15 @@ const Calendar = () => {
                   center: 'title',
                   right: '',
                 }}
-                titleFormat={{ year: 'numeric', month: 'long', day: 'numeric' }}
+                titleFormat={{ year: 'numeric', month: 'long' }}
                 height="calc(100vh - 160px)"
                 events={calendarEvents}
-                dateClick={handleDateClick}
                 eventClick={handleEventClick}
                 eventDrop={handleEventDrop}
                 eventResize={handleEventResize}
                 eventReceive={handleEventReceive}
+                datesSet={handleDatesSet}
+                dayHeaderContent={renderDayHeaderContent}
                 editable={true}
                 droppable={true}
                 weekends={true}
@@ -579,25 +537,18 @@ const Calendar = () => {
 
           {/* Day View */}
           {selectedDate && (
-            <div 
-              className="calendar-wrapper day-view"
-              style={{
-                transform: `translateX(${swipeOffset}px)`,
-                transition: isAnimating ? 'transform 0.2s ease-out' : 'none'
-              }}
-            >
+            <div className="calendar-wrapper day-view">
               <div className="day-view-header">
                 <button className="btn-back-day" onClick={closeDayView}>
                   ← Back to Week
                 </button>
                 <div className="day-view-title">
                   <h2>{formatSelectedDate(selectedDate)}</h2>
-                  <span className="swipe-hint">Swipe to change day</span>
                 </div>
               </div>
               <FullCalendar
                 ref={dayCalendarRef}
-                key={selectedDate.toISOString()} // Force re-render on date change
+                key={selectedDate.toISOString()}
                 plugins={[timeGridPlugin, interactionPlugin]}
                 initialView="timeGridDay"
                 initialDate={selectedDate}
@@ -645,14 +596,14 @@ const Calendar = () => {
             <div className="modal-body">
               {selectedEvent.extendedProps.image_url && (
                 <div className="modal-image">
-                  <img 
-                    src={selectedEvent.extendedProps.image_url} 
+                  <img
+                    src={selectedEvent.extendedProps.image_url}
                     alt={selectedEvent.extendedProps.item_title}
                     onError={(e) => e.target.style.display = 'none'}
                   />
                 </div>
               )}
-              
+
               <div className="modal-info">
                 <label>Type</label>
                 <div>{selectedEvent.extendedProps.type === 'pickup' ? 'Pickup' : 'Delivery'}</div>
@@ -661,14 +612,16 @@ const Calendar = () => {
                 <label>Customer</label>
                 <div>{selectedEvent.extendedProps.customer_name}</div>
               </div>
-              <div className="modal-info">
-                <label>Phone</label>
-                <div>
-                  <a href={`tel:${selectedEvent.extendedProps.customer_phone}`}>
-                    {selectedEvent.extendedProps.customer_phone}
-                  </a>
+              {selectedEvent.extendedProps.customer_phone && (
+                <div className="modal-info">
+                  <label>Phone</label>
+                  <div>
+                    <a href={`tel:${selectedEvent.extendedProps.customer_phone}`}>
+                      {selectedEvent.extendedProps.customer_phone}
+                    </a>
+                  </div>
                 </div>
-              </div>
+              )}
               {selectedEvent.extendedProps.type === 'delivery' && (
                 <div className="modal-info">
                   <label>Item</label>
@@ -711,8 +664,8 @@ const Calendar = () => {
               </div>
             </div>
             <div className="modal-footer">
-              <button 
-                className="btn btn-secondary" 
+              <button
+                className="btn btn-secondary"
                 onClick={handleUnschedule}
               >
                 Remove from Schedule
