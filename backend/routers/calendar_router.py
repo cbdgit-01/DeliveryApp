@@ -158,9 +158,9 @@ def get_unscheduled_pickups(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get pickup requests that need scheduling (approved but not yet scheduled)"""
+    """Get pickup requests that need scheduling (pending but not yet scheduled)"""
     pickups = db.query(PickupRequest).filter(
-        PickupRequest.status == PickupStatus.approved,
+        PickupRequest.status == PickupStatus.pending,
         PickupRequest.scheduled_start.is_(None)
     ).order_by(PickupRequest.created_at.desc()).all()
     

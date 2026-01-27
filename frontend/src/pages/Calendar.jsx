@@ -8,7 +8,7 @@ import { calendarAPI, tasksAPI, pickupsAPI } from '../services/api';
 import './Calendar.css';
 
 const Calendar = () => {
-  const monthCalendarRef = useRef(null);
+  const weekCalendarRef = useRef(null);
   const dayCalendarRef = useRef(null);
   const calendarPageRef = useRef(null);
   const navigate = useNavigate();
@@ -18,12 +18,12 @@ const Calendar = () => {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showEventModal, setShowEventModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentWeek, setCurrentWeek] = useState(new Date());
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   const deliveryDraggableRef = useRef(null);
   const pickupDraggableRef = useRef(null);
-  
+
   // Touch/swipe tracking
   const touchStartX = useRef(null);
   const touchStartY = useRef(null);
@@ -298,17 +298,17 @@ const Calendar = () => {
 
   const handleUnschedule = async () => {
     if (!selectedEvent) return;
-    
+
     const isPickup = selectedEvent.extendedProps?.type === 'pickup';
-    const confirmMsg = isPickup 
-      ? 'Remove this pickup from the schedule? It will go back to approved status.'
+    const confirmMsg = isPickup
+      ? 'Remove this pickup from the schedule? It will go back to pending status.'
       : 'Remove this delivery from the schedule? It will go back to pending status.';
-    
+
     if (!confirm(confirmMsg)) return;
 
     const eventId = selectedEvent.id;
-    const actualId = isPickup 
-      ? selectedEvent.extendedProps.pickup_id 
+    const actualId = isPickup
+      ? selectedEvent.extendedProps.pickup_id
       : (selectedEvent.extendedProps?.task_id || eventId.replace('delivery-', ''));
 
     try {
@@ -316,7 +316,7 @@ const Calendar = () => {
         await pickupsAPI.update(actualId, {
           scheduled_start: null,
           scheduled_end: null,
-          status: 'approved',
+          status: 'pending',
         });
         await fetchUnscheduledPickups();
       } else {
@@ -339,8 +339,8 @@ const Calendar = () => {
   const handleTodayClick = () => {
     if (selectedDate) {
       setSelectedDate(new Date());
-    } else if (monthCalendarRef.current) {
-      monthCalendarRef.current.getApi().today();
+    } else if (weekCalendarRef.current) {
+      weekCalendarRef.current.getApi().today();
     }
   };
 
@@ -406,8 +406,8 @@ const Calendar = () => {
       setTimeout(() => {
         if (selectedDate) {
           navigateDay(direction);
-        } else if (monthCalendarRef.current) {
-          const api = monthCalendarRef.current.getApi();
+        } else if (weekCalendarRef.current) {
+          const api = weekCalendarRef.current.getApi();
           if (direction > 0) {
             api.next();
           } else {
@@ -462,7 +462,7 @@ const Calendar = () => {
       <div className="calendar-header">
         <div className="calendar-title">
           <h1>Calendar</h1>
-          <span className="swipe-hint-header">Swipe to change month</span>
+          <span className="swipe-hint-header">Swipe to change week</span>
         </div>
       </div>
 
@@ -521,44 +521,53 @@ const Calendar = () => {
               </div>
             ) : (
               <div className="empty-unscheduled">
-                <p>No approved pickups to schedule</p>
+                <p>No pending pickups to schedule</p>
               </div>
             )}
           </div>
         </div>
 
         <div className="calendar-main">
-          {/* Month View */}
+          {/* Week View */}
           {!selectedDate && (
-            <div 
-              className="calendar-wrapper month-view"
+            <div
+              className="calendar-wrapper week-view"
               style={{
                 transform: `translateX(${swipeOffset}px)`,
                 transition: isAnimating ? 'transform 0.2s ease-out' : 'none'
               }}
             >
               <FullCalendar
-                ref={monthCalendarRef}
-                plugins={[dayGridPlugin, interactionPlugin]}
-                initialView="dayGridMonth"
+                ref={weekCalendarRef}
+                plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+                initialView="timeGridWeek"
                 headerToolbar={{
                   left: '',
                   center: 'title',
                   right: '',
                 }}
-                titleFormat={{ year: 'numeric', month: 'long' }}
+                titleFormat={{ year: 'numeric', month: 'long', day: 'numeric' }}
                 height="calc(100vh - 160px)"
                 events={calendarEvents}
                 dateClick={handleDateClick}
                 eventClick={handleEventClick}
                 eventDrop={handleEventDrop}
+                eventResize={handleEventResize}
                 eventReceive={handleEventReceive}
                 editable={true}
                 droppable={true}
-                dayMaxEventRows={3}
                 weekends={true}
                 dropAccept=".unscheduled-item"
                 eventDisplay="block"
+                slotMinTime="06:00:00"
+                slotMaxTime="22:00:00"
+                slotDuration="00:30:00"
+                snapDuration="00:15:00"
+                allDaySlot={false}
+                eventDurationEditable={true}
+                eventOverlap={true}
+                nowIndicator={true}
+                longPressDelay={150}
                 eventTimeFormat={{
                   hour: 'numeric',
                   minute: '2-digit',
@@ -579,7 +588,7 @@ const Calendar = () => {
             >
               <div className="day-view-header">
                 <button className="btn-back-day" onClick={closeDayView}>
-                  ← Back to Month
+                  ← Back to Week
                 </button>
                 <div className="day-view-title">
                   <h2>{formatSelectedDate(selectedDate)}</h2>
@@ -610,6 +619,7 @@ const Calendar = () => {
                 eventOverlap={true}
                 dropAccept=".unscheduled-item"
                 nowIndicator={true}
+                longPressDelay={150}
                 eventTimeFormat={{
                   hour: 'numeric',
                   minute: '2-digit',
