@@ -68,12 +68,12 @@ class DeliveryTask(Base):
     
     # Multiple items support - JSON array of {sku, item_id, title, description, image_url}
     items = Column(JSON, nullable=True)
-    
+
     # Customer information
     customer_name = Column(String, nullable=False)
-    customer_phone = Column(String, nullable=False, index=True)
+    customer_phone = Column(String, nullable=True, index=True)
     customer_email = Column(String, nullable=True)
-    
+
     # Delivery address
     delivery_address_line1 = Column(String, nullable=False)
     delivery_address_line2 = Column(String, nullable=True)
@@ -119,12 +119,12 @@ class PickupRequest(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     status = Column(Enum(PickupStatus), default=PickupStatus.pending, nullable=False)
-    
+
     # Customer information
     customer_name = Column(String, nullable=False)
-    customer_phone = Column(String, nullable=False, index=True)
+    customer_phone = Column(String, nullable=True, index=True)
     customer_email = Column(String, nullable=True)
-    
+
     # Pickup address
     pickup_address_line1 = Column(String, nullable=False)
     pickup_address_line2 = Column(String, nullable=True)

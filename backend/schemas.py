@@ -55,7 +55,7 @@ class DeliveryTaskBase(BaseModel):
     image_url: Optional[str] = None
     items: Optional[List[DeliveryItem]] = None  # Multiple items support
     customer_name: str
-    customer_phone: str
+    customer_phone: Optional[str] = None
     customer_email: Optional[str] = None
     delivery_address_line1: str
     delivery_address_line2: Optional[str] = None
@@ -167,7 +167,7 @@ class ScheduleFormSubmit(BaseModel):
 # PickupRequest schemas
 class PickupRequestBase(BaseModel):
     customer_name: str
-    customer_phone: str
+    customer_phone: Optional[str] = None
     customer_email: Optional[str] = None
     pickup_address_line1: str
     pickup_address_line2: Optional[str] = None

@@ -3,6 +3,8 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { pickupsAPI } from '../services/api';
 import { useOffline } from '../context/OfflineContext';
 import { openInMaps } from '../utils/maps';
+import { openSmsWithMessage } from '../utils/sms';
+import { getETA, formatArrivalTime } from '../utils/directions';
 import './TaskDetail.css'; // Reuse TaskDetail styles
 
 const PickupDetail = () => {
@@ -14,6 +16,21 @@ const PickupDetail = () => {
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState('');
   const [showMenu, setShowMenu] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [gettingLocation, setGettingLocation] = useState(false);
+  const [editData, setEditData] = useState({
+    customer_name: '',
+    customer_phone: '',
+    customer_email: '',
+    pickup_address_line1: '',
+    pickup_address_line2: '',
+    pickup_city: '',
+    pickup_state: '',
+    pickup_zip: '',
+    item_description: '',
+    item_count: 1,
+    pickup_notes: '',
+  });
 
   const fetchPickup = async () => {
     try {
@@ -33,6 +50,20 @@ const PickupDetail = () => {
       }
 
       setPickup(pickupData);
+      // Initialize edit data
+      setEditData({
+        customer_name: pickupData.customer_name || '',
+        customer_phone: pickupData.customer_phone || '',
+        customer_email: pickupData.customer_email || '',
+        pickup_address_line1: pickupData.pickup_address_line1 || '',
+        pickup_address_line2: pickupData.pickup_address_line2 || '',
+        pickup_city: pickupData.pickup_city || '',
+        pickup_state: pickupData.pickup_state || '',
+        pickup_zip: pickupData.pickup_zip || '',
+        item_description: pickupData.item_description || '',
+        item_count: pickupData.item_count || 1,
+        pickup_notes: pickupData.pickup_notes || '',
+      });
     } catch (err) {
       console.error('Error fetching pickup:', err);
       // If API call fails, try cache as fallback
@@ -78,6 +109,84 @@ const PickupDetail = () => {
       alert('Failed to delete pickup');
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    setUpdating(true);
+    try {
+      await pickupsAPI.update(id, editData);
+      await fetchPickup();
+      setIsEditing(false);
+    } catch (err) {
+      console.error('Error updating pickup:', err);
+      alert('Failed to update pickup');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditData({
+      customer_name: pickup.customer_name || '',
+      customer_phone: pickup.customer_phone || '',
+      customer_email: pickup.customer_email || '',
+      pickup_address_line1: pickup.pickup_address_line1 || '',
+      pickup_address_line2: pickup.pickup_address_line2 || '',
+      pickup_city: pickup.pickup_city || '',
+      pickup_state: pickup.pickup_state || '',
+      pickup_zip: pickup.pickup_zip || '',
+      item_description: pickup.item_description || '',
+      item_count: pickup.item_count || 1,
+      pickup_notes: pickup.pickup_notes || '',
+    });
+    setIsEditing(false);
+  };
+
+  const handleStartingPickup = async () => {
+    if (!pickup.customer_phone) {
+      alert('No phone number available for this pickup.');
+      return;
+    }
+
+    setGettingLocation(true);
+
+    try {
+      // Get current location
+      const position = await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+        });
+      });
+
+      const { latitude, longitude } = position.coords;
+      const destination = `${pickup.pickup_address_line1}, ${pickup.pickup_city}, ${pickup.pickup_state} ${pickup.pickup_zip}`;
+
+      // Get ETA from Google Maps
+      const etaDuration = await getETA(latitude, longitude, destination);
+      const arrivalTime = formatArrivalTime(etaDuration);
+
+      // Format customer's first name
+      const firstName = pickup.customer_name.split(' ')[0];
+
+      // Create the SMS message
+      const message = `Hi ${firstName}, this is Consigned By Design. We're on our way for the pickup! Our estimated arrival time is around ${arrivalTime}.`;
+
+      // Open SMS app with pre-filled message
+      openSmsWithMessage(pickup.customer_phone, message);
+
+    } catch (error) {
+      console.error('Error getting location:', error);
+
+      // Fallback: send SMS without specific ETA
+      const firstName = pickup.customer_name.split(' ')[0];
+      const message = `Hi ${firstName}, this is Consigned By Design. We're on our way for the pickup!`;
+      openSmsWithMessage(pickup.customer_phone, message);
+
+    } finally {
+      setGettingLocation(false);
     }
   };
 
@@ -156,34 +265,188 @@ const PickupDetail = () => {
           ← Back to Pickups
         </Link>
         <h1>Pickup Details</h1>
-        <span className={getStatusBadgeClass(pickup.status)}>
-          {getStatusLabel(pickup.status)}
-        </span>
-        <div className="header-menu">
-          <button 
-            className="menu-trigger" 
-            onClick={() => setShowMenu(!showMenu)}
-            aria-label="More options"
-          >
-            ⋮
-          </button>
-          {showMenu && (
-            <div className="menu-dropdown">
-              <button 
-                className="menu-item menu-item-danger"
-                onClick={() => {
-                  setShowMenu(false);
-                  handleDelete();
-                }}
-              >
-                Delete from System
-              </button>
-            </div>
+        <div className="header-actions">
+          {!isEditing && pickup.status !== 'completed' && (
+            <button
+              className="btn btn-secondary btn-edit"
+              onClick={() => setIsEditing(true)}
+            >
+              Edit
+            </button>
           )}
+          <div className="header-menu">
+            <button
+              className="menu-trigger"
+              onClick={() => setShowMenu(!showMenu)}
+              aria-label="More options"
+            >
+              ⋮
+            </button>
+            {showMenu && (
+              <div className="menu-dropdown">
+                <button
+                  className="menu-item menu-item-danger"
+                  onClick={() => {
+                    setShowMenu(false);
+                    handleDelete();
+                  }}
+                >
+                  Delete from System
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="task-detail-grid">
+      {isEditing ? (
+        /* Edit Mode */
+        <form onSubmit={handleSaveEdit} className="edit-form">
+          <div className="card">
+            <div className="card-header-with-badge">
+              <h2>Customer Information</h2>
+              <span className={getStatusBadgeClass(pickup.status)}>
+                {getStatusLabel(pickup.status)}
+              </span>
+            </div>
+            <div className="form-grid">
+              <div className="form-group">
+                <label htmlFor="customer_name">Name</label>
+                <input
+                  id="customer_name"
+                  type="text"
+                  value={editData.customer_name}
+                  onChange={(e) => setEditData({ ...editData, customer_name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="customer_phone">Phone</label>
+                <input
+                  id="customer_phone"
+                  type="tel"
+                  value={editData.customer_phone}
+                  onChange={(e) => setEditData({ ...editData, customer_phone: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="customer_email">Email</label>
+                <input
+                  id="customer_email"
+                  type="email"
+                  value={editData.customer_email}
+                  onChange={(e) => setEditData({ ...editData, customer_email: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="card">
+            <h2>Pickup Address</h2>
+            <div className="form-grid">
+              <div className="form-group full-width">
+                <label htmlFor="pickup_address_line1">Address Line 1</label>
+                <input
+                  id="pickup_address_line1"
+                  type="text"
+                  value={editData.pickup_address_line1}
+                  onChange={(e) => setEditData({ ...editData, pickup_address_line1: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="form-group full-width">
+                <label htmlFor="pickup_address_line2">Address Line 2</label>
+                <input
+                  id="pickup_address_line2"
+                  type="text"
+                  value={editData.pickup_address_line2}
+                  onChange={(e) => setEditData({ ...editData, pickup_address_line2: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="pickup_city">City</label>
+                <input
+                  id="pickup_city"
+                  type="text"
+                  value={editData.pickup_city}
+                  onChange={(e) => setEditData({ ...editData, pickup_city: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="pickup_state">State</label>
+                <input
+                  id="pickup_state"
+                  type="text"
+                  value={editData.pickup_state}
+                  onChange={(e) => setEditData({ ...editData, pickup_state: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="pickup_zip">ZIP Code</label>
+                <input
+                  id="pickup_zip"
+                  type="text"
+                  value={editData.pickup_zip}
+                  onChange={(e) => setEditData({ ...editData, pickup_zip: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="card">
+            <h2>Item Information</h2>
+            <div className="form-grid">
+              <div className="form-group full-width">
+                <label htmlFor="item_description">Description</label>
+                <textarea
+                  id="item_description"
+                  value={editData.item_description}
+                  onChange={(e) => setEditData({ ...editData, item_description: e.target.value })}
+                  rows={3}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="item_count">Estimated Items</label>
+                <input
+                  id="item_count"
+                  type="number"
+                  min="1"
+                  value={editData.item_count}
+                  onChange={(e) => setEditData({ ...editData, item_count: parseInt(e.target.value) || 1 })}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="card">
+            <h2>Notes</h2>
+            <div className="form-group">
+              <textarea
+                id="pickup_notes"
+                value={editData.pickup_notes}
+                onChange={(e) => setEditData({ ...editData, pickup_notes: e.target.value })}
+                rows={4}
+                placeholder="Add notes about the pickup..."
+              />
+            </div>
+          </div>
+
+          <div className="edit-actions">
+            <button type="button" className="btn btn-secondary" onClick={handleCancelEdit} disabled={updating}>
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={updating}>
+              {updating ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
+      ) : (
+        /* View Mode */
+        <div className="task-detail-grid">
         {/* Customer Information */}
         <div className="card">
           <h2>Customer</h2>
@@ -313,13 +576,22 @@ const PickupDetail = () => {
                 </p>
               )}
               {pickup.status === 'scheduled' && (
-                <button
-                  className="btn btn-success btn-full"
-                  onClick={handleComplete}
-                  disabled={updating}
-                >
-                  Mark as Completed
-                </button>
+                <>
+                  <button
+                    className="btn btn-info btn-full"
+                    onClick={handleStartingPickup}
+                    disabled={gettingLocation}
+                  >
+                    {gettingLocation ? 'Getting Location...' : 'Starting Pickup (Send SMS)'}
+                  </button>
+                  <button
+                    className="btn btn-success btn-full"
+                    onClick={handleComplete}
+                    disabled={updating}
+                  >
+                    Mark as Completed
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -338,7 +610,8 @@ const PickupDetail = () => {
             </div>
           </div>
         )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

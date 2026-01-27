@@ -177,7 +177,7 @@ const CreateDeliveryManual = () => {
               </div>
 
               <div className="form-group-new">
-                <label htmlFor="customer_phone">Phone Number *</label>
+                <label htmlFor="customer_phone">Phone Number (Optional)</label>
                 <input
                   id="customer_phone"
                   name="customer_phone"
@@ -185,7 +185,6 @@ const CreateDeliveryManual = () => {
                   value={formData.customer_phone}
                   onChange={handleChange}
                   placeholder="555-123-4567"
-                  required
                 />
               </div>
 
