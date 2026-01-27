@@ -172,7 +172,10 @@ const Calendar = () => {
     } catch (error) {
       console.error('Error updating event:', error);
       dropInfo.revert();
-      alert('Failed to update time');
+      const errorMsg = error.response?.status === 403
+        ? 'Permission denied. You need scheduler or admin role to update events.'
+        : error.response?.data?.detail || 'Failed to update time';
+      alert(errorMsg);
     }
   };
 
@@ -207,7 +210,10 @@ const Calendar = () => {
     } catch (error) {
       console.error('Error resizing event:', error);
       resizeInfo.revert();
-      alert('Failed to update time');
+      const errorMsg = error.response?.status === 403
+        ? 'Permission denied. You need scheduler or admin role to update events.'
+        : error.response?.data?.detail || 'Failed to update time';
+      alert(errorMsg);
     }
   };
 
@@ -413,18 +419,19 @@ const Calendar = () => {
           <h1>Calendar</h1>
         </div>
         <div className="calendar-nav">
-          <button className="nav-btn" onClick={navigatePrev}>
+          <button className="nav-btn nav-arrow" onClick={navigatePrev} title="Previous week">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
               <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
             </svg>
           </button>
-          <button className="nav-btn today-btn" onClick={navigateToday}>
-            Today
-          </button>
-          <button className="nav-btn" onClick={navigateNext}>
+          <span className="nav-month-title">{currentTitle || 'Loading...'}</span>
+          <button className="nav-btn nav-arrow" onClick={navigateNext} title="Next week">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
               <path d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z"/>
             </svg>
+          </button>
+          <button className="nav-btn today-btn" onClick={navigateToday}>
+            Today
           </button>
         </div>
       </div>
@@ -498,12 +505,7 @@ const Calendar = () => {
                 ref={weekCalendarRef}
                 plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
                 initialView="timeGridWeek"
-                headerToolbar={{
-                  left: '',
-                  center: 'title',
-                  right: '',
-                }}
-                titleFormat={{ year: 'numeric', month: 'long' }}
+                headerToolbar={false}
                 height="calc(100vh - 160px)"
                 events={calendarEvents}
                 eventClick={handleEventClick}

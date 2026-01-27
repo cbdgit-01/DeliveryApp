@@ -64,6 +64,18 @@
   height: 20px;
 }
 
+.nav-btn.nav-arrow {
+  padding: 6px;
+}
+
+.nav-month-title {
+  font-size: var(--font-size-md);
+  font-weight: 500;
+  color: var(--text-primary);
+  min-width: 140px;
+  text-align: center;
+}
+
 .calendar-container {
   display: grid;
   grid-template-columns: 240px 1fr;
