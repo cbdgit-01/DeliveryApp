@@ -192,6 +192,55 @@ export const OfflineProvider = ({ children }) => {
     }
   }, []);
 
+  // Cache calendar events from API response
+  const cacheCalendarEvents = useCallback(async (events) => {
+    try {
+      await offlineService.cacheCalendarEvents(events);
+    } catch (error) {
+      console.error('Failed to cache calendar events:', error);
+    }
+  }, []);
+
+  // Get cached calendar events
+  const getCachedCalendarEvents = useCallback(async () => {
+    try {
+      return await offlineService.getCachedCalendarEvents();
+    } catch (error) {
+      console.error('Failed to get cached calendar events:', error);
+      return [];
+    }
+  }, []);
+
+  // Update a cached calendar event locally
+  const updateCachedCalendarEvent = useCallback(async (id, updates) => {
+    try {
+      return await offlineService.updateCachedCalendarEvent(id, updates);
+    } catch (error) {
+      console.error('Failed to update cached calendar event:', error);
+      return null;
+    }
+  }, []);
+
+  // Add a cached calendar event
+  const addCachedCalendarEvent = useCallback(async (event) => {
+    try {
+      return await offlineService.addCachedCalendarEvent(event);
+    } catch (error) {
+      console.error('Failed to add cached calendar event:', error);
+      return null;
+    }
+  }, []);
+
+  // Remove a cached calendar event
+  const removeCachedCalendarEvent = useCallback(async (id) => {
+    try {
+      return await offlineService.removeCachedCalendarEvent(id);
+    } catch (error) {
+      console.error('Failed to remove cached calendar event:', error);
+      return null;
+    }
+  }, []);
+
   const value = {
     isOnline,
     pendingCount,
@@ -207,6 +256,11 @@ export const OfflineProvider = ({ children }) => {
     getCachedPickups,
     getCachedPickup,
     updateCachedPickup,
+    cacheCalendarEvents,
+    getCachedCalendarEvents,
+    updateCachedCalendarEvent,
+    addCachedCalendarEvent,
+    removeCachedCalendarEvent,
   };
 
   return (

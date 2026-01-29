@@ -22,61 +22,50 @@ const Dashboard = () => {
 
   const fetchTasks = async () => {
     try {
-      setLoading(true);
-      setUsingCache(false);
-
-      if (isOnline) {
-        // Online: fetch from API and cache
-        let params = {};
-
-        if (filter === 'active') {
-          params = {}; // We'll filter on the frontend
-        } else if (filter !== 'all') {
-          params = { status: filter };
-        }
-
-        const response = await tasksAPI.list(params);
-
-        // Cache all tasks for offline use
-        await cacheTasks(response.data);
-
-        // Filter out paid and cancelled if in 'active' mode
-        let filteredTasks = response.data;
-        if (filter === 'active') {
-          filteredTasks = response.data.filter(
-            task => task.status !== 'paid' && task.status !== 'cancelled'
-          );
-        }
-
-        setTasks(filteredTasks);
-      } else {
-        // Offline: use cached data
+      // CACHE-FIRST: Always try to show cached data immediately
+      const cachedTasks = await getCachedTasks();
+      if (cachedTasks.length > 0) {
         setUsingCache(true);
-        const cachedTasks = await getCachedTasks();
+        applyFilterAndSetTasks(cachedTasks);
+        setLoading(false);
+      }
 
-        // Apply same filtering logic
-        let filteredTasks = cachedTasks;
-        if (filter === 'active') {
-          filteredTasks = cachedTasks.filter(
-            task => task.status !== 'paid' && task.status !== 'cancelled'
-          );
-        } else if (filter !== 'all') {
-          filteredTasks = cachedTasks.filter(task => task.status === filter);
+      // Then fetch fresh data in background if online
+      if (isOnline) {
+        try {
+          const response = await tasksAPI.list({});
+          // Cache all tasks for offline use
+          await cacheTasks(response.data);
+          setUsingCache(false);
+          applyFilterAndSetTasks(response.data);
+        } catch (error) {
+          console.error('Background fetch failed:', error);
+          // Keep showing cached data - already displayed above
         }
+      }
 
-        setTasks(filteredTasks);
+      // If no cache and offline, show empty
+      if (cachedTasks.length === 0 && !isOnline) {
+        setTasks([]);
       }
     } catch (error) {
       console.error('Error fetching tasks:', error);
-      // If online fetch fails, try cache
-      if (isOnline) {
-        setUsingCache(true);
-        const cachedTasks = await getCachedTasks();
-        setTasks(cachedTasks);
-      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const applyFilterAndSetTasks = (taskList) => {
+    let filteredTasks = taskList;
+    if (filter === 'active') {
+      filteredTasks = taskList.filter(
+        task => task.status !== 'paid' && task.status !== 'cancelled'
+      );
+    } else if (filter !== 'all') {
+      filteredTasks = taskList.filter(task => task.status === filter);
+    }
+    setTasks(filteredTasks);
+    setAllTasks(taskList);
   };
 
   const filteredTasks = tasks.filter(task => {
@@ -107,19 +96,6 @@ const Dashboard = () => {
   };
 
   const [allTasks, setAllTasks] = useState([]);
-
-  // Fetch all tasks once for stats
-  useEffect(() => {
-    const fetchAllTasks = async () => {
-      try {
-        const response = await tasksAPI.list({});
-        setAllTasks(response.data);
-      } catch (error) {
-        console.error('Error fetching all tasks:', error);
-      }
-    };
-    fetchAllTasks();
-  }, []);
 
   // Entrance animation for cards
   useEffect(() => {

@@ -21,43 +21,51 @@ const PickupDashboard = () => {
 
   const fetchPickups = async () => {
     try {
-      setUsingCache(false);
-
-      if (isOnline) {
-        const [pickupsRes, statsRes] = await Promise.all([
-          pickupsAPI.list(),
-          pickupsAPI.getStats()
-        ]);
-        setPickups(pickupsRes.data);
-        setStats(statsRes.data);
-
-        // Cache pickups for offline use
-        await cachePickups(pickupsRes.data);
-      } else {
-        // Offline: use cached data
+      // CACHE-FIRST: Always try to show cached data immediately
+      const cachedPickups = await getCachedPickups();
+      if (cachedPickups.length > 0) {
         setUsingCache(true);
-        const cachedPickups = await getCachedPickups();
         setPickups(cachedPickups);
+        setStats(calculateStatsFromPickups(cachedPickups));
+        setLoading(false);
+      }
 
-        // Calculate stats from cached data
-        const cachedStats = {
-          pending: cachedPickups.filter(p => p.status === 'pending').length,
-          scheduled: cachedPickups.filter(p => p.status === 'scheduled').length,
-          completed: cachedPickups.filter(p => p.status === 'completed').length,
-        };
-        setStats(cachedStats);
+      // Then fetch fresh data in background if online
+      if (isOnline) {
+        try {
+          const [pickupsRes, statsRes] = await Promise.all([
+            pickupsAPI.list(),
+            pickupsAPI.getStats()
+          ]);
+          setPickups(pickupsRes.data);
+          setStats(statsRes.data);
+          setUsingCache(false);
+
+          // Cache pickups for offline use
+          await cachePickups(pickupsRes.data);
+        } catch (error) {
+          console.error('Background fetch failed:', error);
+          // Keep showing cached data - already displayed above
+        }
+      }
+
+      // If no cache and offline, show empty
+      if (cachedPickups.length === 0 && !isOnline) {
+        setPickups([]);
       }
     } catch (error) {
       console.error('Error fetching pickups:', error);
-      // If online fetch fails, try cache
-      if (isOnline) {
-        setUsingCache(true);
-        const cachedPickups = await getCachedPickups();
-        setPickups(cachedPickups);
-      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const calculateStatsFromPickups = (pickupList) => {
+    return {
+      pending: pickupList.filter(p => p.status !== 'completed' && !p.scheduled_start).length,
+      scheduled: pickupList.filter(p => p.status !== 'completed' && p.scheduled_start).length,
+      completed: pickupList.filter(p => p.status === 'completed').length,
+    };
   };
 
   useEffect(() => {

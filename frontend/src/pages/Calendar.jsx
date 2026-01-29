@@ -5,12 +5,14 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin, { Draggable } from '@fullcalendar/interaction';
 import { calendarAPI, tasksAPI, pickupsAPI } from '../services/api';
+import { useOffline } from '../context/OfflineContext';
 import './Calendar.css';
 
 const Calendar = () => {
   const weekCalendarRef = useRef(null);
   const dayCalendarRef = useRef(null);
   const navigate = useNavigate();
+  const { isOnline, cacheCalendarEvents, getCachedCalendarEvents } = useOffline();
   const [unscheduledDeliveries, setUnscheduledDeliveries] = useState([]);
   const [unscheduledPickups, setUnscheduledPickups] = useState([]);
   const [calendarEvents, setCalendarEvents] = useState([]);
@@ -34,12 +36,28 @@ const Calendar = () => {
       const end = new Date();
       end.setMonth(end.getMonth() + 6);
 
-      const response = await calendarAPI.getEvents(start, end);
-      const eventsWithStringIds = response.data.map(event => ({
-        ...event,
-        id: String(event.id)
-      }));
-      setCalendarEvents(eventsWithStringIds);
+      // CACHE-FIRST: Show cached events immediately
+      const cachedEvents = await getCachedCalendarEvents();
+      if (cachedEvents.length > 0) {
+        setCalendarEvents(cachedEvents);
+      }
+
+      // Then fetch fresh data in background if online
+      if (isOnline) {
+        try {
+          const response = await calendarAPI.getEvents(start, end);
+          const eventsWithStringIds = response.data.map(event => ({
+            ...event,
+            id: String(event.id)
+          }));
+          setCalendarEvents(eventsWithStringIds);
+          // Cache for offline use
+          await cacheCalendarEvents(eventsWithStringIds);
+        } catch (error) {
+          console.error('Background fetch failed:', error);
+          // Keep showing cached data
+        }
+      }
     } catch (error) {
       console.error('Error fetching calendar events:', error);
     }

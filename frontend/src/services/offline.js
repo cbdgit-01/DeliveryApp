@@ -3,11 +3,12 @@
  */
 
 const DB_NAME = 'DeliveryAppOffline';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 const STORES = {
   TASKS: 'tasks',
   PICKUPS: 'pickups',
+  CALENDAR_EVENTS: 'calendarEvents',
   PENDING_ACTIONS: 'pendingActions',
   META: 'meta',
 };
@@ -46,6 +47,11 @@ class OfflineService {
         // Pickups store
         if (!db.objectStoreNames.contains(STORES.PICKUPS)) {
           db.createObjectStore(STORES.PICKUPS, { keyPath: 'id' });
+        }
+
+        // Calendar events store
+        if (!db.objectStoreNames.contains(STORES.CALENDAR_EVENTS)) {
+          db.createObjectStore(STORES.CALENDAR_EVENTS, { keyPath: 'id' });
         }
 
         // Pending actions store (auto-increment ID)
@@ -155,6 +161,56 @@ class OfflineService {
     return null;
   }
 
+  // ========== CALENDAR EVENTS ==========
+
+  async cacheCalendarEvents(events) {
+    await this.init();
+    const tx = this.db.transaction(STORES.CALENDAR_EVENTS, 'readwrite');
+    const store = tx.objectStore(STORES.CALENDAR_EVENTS);
+
+    await this._promisify(store.clear());
+    for (const event of events) {
+      await this._promisify(store.add(event));
+    }
+
+    await this.setMeta('calendarEventsLastSync', Date.now());
+  }
+
+  async getCachedCalendarEvents() {
+    await this.init();
+    const tx = this.db.transaction(STORES.CALENDAR_EVENTS, 'readonly');
+    const store = tx.objectStore(STORES.CALENDAR_EVENTS);
+    return this._promisify(store.getAll());
+  }
+
+  async updateCachedCalendarEvent(id, updates) {
+    await this.init();
+    const tx = this.db.transaction(STORES.CALENDAR_EVENTS, 'readwrite');
+    const store = tx.objectStore(STORES.CALENDAR_EVENTS);
+
+    const existing = await this._promisify(store.get(id));
+    if (existing) {
+      const updated = { ...existing, ...updates };
+      await this._promisify(store.put(updated));
+      return updated;
+    }
+    return null;
+  }
+
+  async removeCachedCalendarEvent(id) {
+    await this.init();
+    const tx = this.db.transaction(STORES.CALENDAR_EVENTS, 'readwrite');
+    const store = tx.objectStore(STORES.CALENDAR_EVENTS);
+    return this._promisify(store.delete(id));
+  }
+
+  async addCachedCalendarEvent(event) {
+    await this.init();
+    const tx = this.db.transaction(STORES.CALENDAR_EVENTS, 'readwrite');
+    const store = tx.objectStore(STORES.CALENDAR_EVENTS);
+    return this._promisify(store.put(event));
+  }
+
   // ========== PENDING ACTIONS ==========
 
   async queueAction(action) {
@@ -235,13 +291,14 @@ class OfflineService {
   async clearAll() {
     await this.init();
     const tx = this.db.transaction(
-      [STORES.TASKS, STORES.PICKUPS, STORES.PENDING_ACTIONS, STORES.META],
+      [STORES.TASKS, STORES.PICKUPS, STORES.CALENDAR_EVENTS, STORES.PENDING_ACTIONS, STORES.META],
       'readwrite'
     );
 
     await Promise.all([
       this._promisify(tx.objectStore(STORES.TASKS).clear()),
       this._promisify(tx.objectStore(STORES.PICKUPS).clear()),
+      this._promisify(tx.objectStore(STORES.CALENDAR_EVENTS).clear()),
       this._promisify(tx.objectStore(STORES.PENDING_ACTIONS).clear()),
       this._promisify(tx.objectStore(STORES.META).clear()),
     ]);
