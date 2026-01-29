@@ -34,12 +34,48 @@ print(f"🗄️  Using Database: {db_type}")
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
+# Ensure enum types are up to date
+def ensure_enum_updates():
+    """Add missing values to PostgreSQL enum types - safe for production"""
+    from sqlalchemy import text
+    from database import engine
+
+    if "postgresql" not in settings.database_url:
+        return  # Only needed for PostgreSQL
+
+    # List of enum updates: (enum_name, value)
+    enum_updates = [
+        ("pickupstatus", "pending"),
+        ("pickupstatus", "scheduled"),
+        ("pickupstatus", "completed"),
+    ]
+
+    with engine.connect() as conn:
+        for enum_name, value in enum_updates:
+            try:
+                # Check if value exists in enum
+                result = conn.execute(text(
+                    f"SELECT 1 FROM pg_enum WHERE enumlabel = '{value}' "
+                    f"AND enumtypid = (SELECT oid FROM pg_type WHERE typname = '{enum_name}')"
+                ))
+                if result.fetchone() is None:
+                    # Add the value to the enum
+                    conn.execute(text(f"ALTER TYPE {enum_name} ADD VALUE IF NOT EXISTS '{value}'"))
+                    conn.commit()
+                    print(f"✓ Added enum value: {enum_name}.{value}")
+                else:
+                    print(f"✓ Enum value exists: {enum_name}.{value}")
+            except Exception as e:
+                print(f"Enum update skipped for {enum_name}.{value}: {e}")
+
+ensure_enum_updates()
+
 # Ensure schema is up to date (add missing columns safely)
 def ensure_schema_updates():
     """Add any missing columns to existing tables - safe for production"""
     from sqlalchemy import text
     from database import engine
-    
+
     # List of schema updates (column additions only - safe operations)
     schema_updates = [
         # Add items column to delivery_tasks if it doesn't exist
