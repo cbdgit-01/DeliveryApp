@@ -3,13 +3,14 @@
  */
 
 const DB_NAME = 'DeliveryAppOffline';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 const STORES = {
   TASKS: 'tasks',
   PICKUPS: 'pickups',
   CALENDAR_EVENTS: 'calendarEvents',
   PENDING_ACTIONS: 'pendingActions',
+  PENDING_SIGNATURES: 'pendingSignatures',
   META: 'meta',
 };
 
@@ -61,6 +62,11 @@ class OfflineService {
             autoIncrement: true,
           });
           actionStore.createIndex('timestamp', 'timestamp');
+        }
+
+        // Pending signatures store (for offline signature capture)
+        if (!db.objectStoreNames.contains(STORES.PENDING_SIGNATURES)) {
+          db.createObjectStore(STORES.PENDING_SIGNATURES, { keyPath: 'taskId' });
         }
 
         // Metadata store (last sync times, etc.)
@@ -211,6 +217,43 @@ class OfflineService {
     return this._promisify(store.put(event));
   }
 
+  // ========== PENDING SIGNATURES ==========
+
+  async savePendingSignature(taskId, signatureBase64) {
+    await this.init();
+    const tx = this.db.transaction(STORES.PENDING_SIGNATURES, 'readwrite');
+    const store = tx.objectStore(STORES.PENDING_SIGNATURES);
+
+    const signatureData = {
+      taskId,
+      signatureBase64,
+      capturedAt: Date.now(),
+    };
+
+    return this._promisify(store.put(signatureData));
+  }
+
+  async getPendingSignature(taskId) {
+    await this.init();
+    const tx = this.db.transaction(STORES.PENDING_SIGNATURES, 'readonly');
+    const store = tx.objectStore(STORES.PENDING_SIGNATURES);
+    return this._promisify(store.get(taskId));
+  }
+
+  async getAllPendingSignatures() {
+    await this.init();
+    const tx = this.db.transaction(STORES.PENDING_SIGNATURES, 'readonly');
+    const store = tx.objectStore(STORES.PENDING_SIGNATURES);
+    return this._promisify(store.getAll());
+  }
+
+  async removePendingSignature(taskId) {
+    await this.init();
+    const tx = this.db.transaction(STORES.PENDING_SIGNATURES, 'readwrite');
+    const store = tx.objectStore(STORES.PENDING_SIGNATURES);
+    return this._promisify(store.delete(taskId));
+  }
+
   // ========== PENDING ACTIONS ==========
 
   async queueAction(action) {
@@ -291,7 +334,7 @@ class OfflineService {
   async clearAll() {
     await this.init();
     const tx = this.db.transaction(
-      [STORES.TASKS, STORES.PICKUPS, STORES.CALENDAR_EVENTS, STORES.PENDING_ACTIONS, STORES.META],
+      [STORES.TASKS, STORES.PICKUPS, STORES.CALENDAR_EVENTS, STORES.PENDING_ACTIONS, STORES.PENDING_SIGNATURES, STORES.META],
       'readwrite'
     );
 
@@ -300,6 +343,7 @@ class OfflineService {
       this._promisify(tx.objectStore(STORES.PICKUPS).clear()),
       this._promisify(tx.objectStore(STORES.CALENDAR_EVENTS).clear()),
       this._promisify(tx.objectStore(STORES.PENDING_ACTIONS).clear()),
+      this._promisify(tx.objectStore(STORES.PENDING_SIGNATURES).clear()),
       this._promisify(tx.objectStore(STORES.META).clear()),
     ]);
   }

@@ -13,7 +13,7 @@ const TaskDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { isOnline, queueAction, updateCachedTask, getCachedTask } = useOffline();
+  const { isOnline, queueAction, updateCachedTask, getCachedTask, savePendingSignature, getPendingSignature } = useOffline();
   const [task, setTask] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -59,6 +59,18 @@ const TaskDetail = () => {
       } else {
         // Offline: load from cache
         taskData = await getCachedTask(id);
+
+        // Also check for pending signature
+        if (taskData) {
+          const pendingSignature = await getPendingSignature(parseInt(id));
+          if (pendingSignature && pendingSignature.signatureBase64) {
+            taskData = {
+              ...taskData,
+              local_signature: pendingSignature.signatureBase64,
+              pending_signature: true,
+            };
+          }
+        }
       }
 
       if (!taskData) {
@@ -176,47 +188,55 @@ const TaskDetail = () => {
   };
 
   const handleSignatureSave = async (signatureFile) => {
-    if (!isOnline) {
-      // Can't upload signature when offline
-      const skipSignature = confirm(
-        'Cannot upload signature while offline. Mark as delivered without signature?\n\nThe delivery will sync when you reconnect.'
-      );
-
-      if (skipSignature) {
-        setSavingSignature(true);
-        try {
-          await queueAction({
-            type: 'UPDATE_TASK',
-            taskId: parseInt(id),
-            data: { status: 'delivered' },
-          });
-
-          await updateCachedTask(parseInt(id), {
-            status: 'delivered',
-            delivered_at: new Date().toISOString(),
-          });
-
-          setTask(prev => ({
-            ...prev,
-            status: 'delivered',
-            delivered_at: new Date().toISOString(),
-          }));
-
-          setShowSignature(false);
-          alert('Delivery recorded. Signature will need to be collected when online.');
-        } catch (error) {
-          console.error('Error queuing action:', error);
-          alert('Failed to record delivery');
-        } finally {
-          setSavingSignature(false);
-        }
-      }
-      return;
-    }
-
     setSavingSignature(true);
+
     try {
-      // Upload signature image
+      if (!isOnline) {
+        // OFFLINE: Convert signature to base64 and store locally
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+          const signatureBase64 = reader.result;
+
+          try {
+            // Save signature to IndexedDB for later upload
+            await savePendingSignature(parseInt(id), signatureBase64);
+
+            // Queue the status update
+            await queueAction({
+              type: 'UPDATE_TASK_WITH_SIGNATURE',
+              taskId: parseInt(id),
+              data: { status: 'delivered' },
+            });
+
+            // Update local cache with delivered status and local signature
+            await updateCachedTask(parseInt(id), {
+              status: 'delivered',
+              delivered_at: new Date().toISOString(),
+              pending_signature: true,
+            });
+
+            setTask(prev => ({
+              ...prev,
+              status: 'delivered',
+              delivered_at: new Date().toISOString(),
+              pending_signature: true,
+              local_signature: signatureBase64,
+            }));
+
+            setShowSignature(false);
+            alert('Signature saved! It will upload automatically when you reconnect.');
+          } catch (error) {
+            console.error('Error saving signature offline:', error);
+            alert('Failed to save signature locally.');
+          } finally {
+            setSavingSignature(false);
+          }
+        };
+        reader.readAsDataURL(signatureFile);
+        return;
+      }
+
+      // ONLINE: Upload signature image directly
       const uploadResponse = await uploadsAPI.uploadImages([signatureFile]);
       const signatureUrl = uploadResponse.data.urls[0];
 
@@ -804,7 +824,7 @@ const TaskDetail = () => {
                     </div>
                   </div>
                 )}
-                {task.signature_url && (
+                {(task.signature_url || task.local_signature) && (
                   <div className="timeline-item signature">
                     <div className="timeline-icon">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -812,9 +832,14 @@ const TaskDetail = () => {
                       </svg>
                     </div>
                     <div className="timeline-content">
-                      <label>Customer Signature</label>
+                      <label>
+                        Customer Signature
+                        {task.pending_signature && !task.signature_url && (
+                          <span className="pending-badge"> (pending upload)</span>
+                        )}
+                      </label>
                       <img
-                        src={task.signature_url}
+                        src={task.signature_url || task.local_signature}
                         alt="Customer signature"
                         className="signature-image"
                       />

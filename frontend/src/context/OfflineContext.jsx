@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { offlineService } from '../services/offline';
-import { tasksAPI, pickupsAPI } from '../services/api';
+import { tasksAPI, pickupsAPI, uploadsAPI } from '../services/api';
 
 const OfflineContext = createContext();
 
@@ -87,12 +87,50 @@ export const OfflineProvider = ({ children }) => {
     }
   }, [isSyncing]);
 
+  // Helper to convert base64 to File
+  const base64ToFile = (base64String, filename) => {
+    const arr = base64String.split(',');
+    const mime = arr[0].match(/:(.*?);/)[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new File([u8arr], filename, { type: mime });
+  };
+
   // Execute a queued action
   const executeAction = async (action) => {
     switch (action.type) {
       case 'UPDATE_TASK':
         await tasksAPI.update(action.taskId, action.data);
         break;
+
+      case 'UPDATE_TASK_WITH_SIGNATURE': {
+        // Get the pending signature from IndexedDB
+        const pendingSignature = await offlineService.getPendingSignature(action.taskId);
+
+        if (pendingSignature && pendingSignature.signatureBase64) {
+          // Convert base64 back to file and upload
+          const signatureFile = base64ToFile(pendingSignature.signatureBase64, 'signature.png');
+          const uploadResponse = await uploadsAPI.uploadImages([signatureFile]);
+          const signatureUrl = uploadResponse.data.urls[0];
+
+          // Update task with delivered status and signature URL
+          await tasksAPI.update(action.taskId, {
+            ...action.data,
+            signature_url: signatureUrl,
+          });
+
+          // Remove the pending signature after successful upload
+          await offlineService.removePendingSignature(action.taskId);
+        } else {
+          // No signature found, just update status
+          await tasksAPI.update(action.taskId, action.data);
+        }
+        break;
+      }
 
       case 'UPDATE_PICKUP':
         await pickupsAPI.update(action.pickupId, action.data);
@@ -241,6 +279,46 @@ export const OfflineProvider = ({ children }) => {
     }
   }, []);
 
+  // Save a pending signature for offline sync
+  const savePendingSignature = useCallback(async (taskId, signatureBase64) => {
+    try {
+      return await offlineService.savePendingSignature(taskId, signatureBase64);
+    } catch (error) {
+      console.error('Failed to save pending signature:', error);
+      return null;
+    }
+  }, []);
+
+  // Get a pending signature
+  const getPendingSignature = useCallback(async (taskId) => {
+    try {
+      return await offlineService.getPendingSignature(taskId);
+    } catch (error) {
+      console.error('Failed to get pending signature:', error);
+      return null;
+    }
+  }, []);
+
+  // Get all pending signatures
+  const getAllPendingSignatures = useCallback(async () => {
+    try {
+      return await offlineService.getAllPendingSignatures();
+    } catch (error) {
+      console.error('Failed to get pending signatures:', error);
+      return [];
+    }
+  }, []);
+
+  // Remove a pending signature after sync
+  const removePendingSignature = useCallback(async (taskId) => {
+    try {
+      return await offlineService.removePendingSignature(taskId);
+    } catch (error) {
+      console.error('Failed to remove pending signature:', error);
+      return null;
+    }
+  }, []);
+
   const value = {
     isOnline,
     pendingCount,
@@ -261,6 +339,10 @@ export const OfflineProvider = ({ children }) => {
     updateCachedCalendarEvent,
     addCachedCalendarEvent,
     removeCachedCalendarEvent,
+    savePendingSignature,
+    getPendingSignature,
+    getAllPendingSignatures,
+    removePendingSignature,
   };
 
   return (
