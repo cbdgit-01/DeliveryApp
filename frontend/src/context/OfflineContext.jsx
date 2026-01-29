@@ -140,6 +140,10 @@ export const OfflineProvider = ({ children }) => {
         await pickupsAPI.complete(action.pickupId);
         break;
 
+      case 'CREATE_PICKUP':
+        await pickupsAPI.create(action.data);
+        break;
+
       default:
         console.warn('Unknown action type:', action.type);
     }

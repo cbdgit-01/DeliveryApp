@@ -1,11 +1,13 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { pickupsAPI, uploadsAPI } from '../services/api';
+import { useOffline } from '../context/OfflineContext';
 import './CreateTask.css';
 import './TaskDetail.css';
 
 const CreatePickup = () => {
   const navigate = useNavigate();
+  const { isOnline, queueAction } = useOffline();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
@@ -43,14 +45,20 @@ const CreatePickup = () => {
   const handleImageSelect = async (e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
-    
+
+    // Can't upload images when offline
+    if (!isOnline) {
+      setError('Cannot upload images while offline. Please connect to the internet or create the pickup without photos.');
+      return;
+    }
+
     // Limit to 10 total images
     const totalImages = formData.item_photos.length + files.length;
     if (totalImages > 10) {
       setError('Maximum 10 images allowed');
       return;
     }
-    
+
     setUploading(true);
     setError('');
     
@@ -119,16 +127,42 @@ const CreatePickup = () => {
     setLoading(true);
 
     try {
-      await pickupsAPI.create(formData);
-      setSuccess(true);
-      
-      // Navigate to pickups dashboard after success
-      setTimeout(() => {
-        navigate('/pickups');
-      }, 1500);
+      if (isOnline) {
+        await pickupsAPI.create(formData);
+        setSuccess(true);
+
+        // Navigate to pickups dashboard after success
+        setTimeout(() => {
+          navigate('/pickups');
+        }, 1500);
+      } else {
+        // Queue for later sync when offline
+        await queueAction({
+          type: 'CREATE_PICKUP',
+          data: formData,
+        });
+        setSuccess(true);
+
+        // Show offline message and navigate
+        alert('Pickup request saved. Will be created when back online.');
+        setTimeout(() => {
+          navigate('/pickups');
+        }, 500);
+      }
     } catch (err) {
       console.error('Error creating pickup:', err);
-      setError(err.response?.data?.detail || 'Failed to create pickup request');
+
+      // Provide specific error messages based on the type of failure
+      if (!err.response) {
+        // Network error - no response from server
+        setError('Network error. Please check your internet connection and try again.');
+      } else if (err.response.status === 401 || err.response.status === 403) {
+        setError('Session expired. Please refresh the page and log in again.');
+      } else if (err.response.status >= 500) {
+        setError('Server error. Please try again later.');
+      } else {
+        setError(err.response?.data?.detail || 'Failed to create pickup request.');
+      }
     } finally {
       setLoading(false);
     }
