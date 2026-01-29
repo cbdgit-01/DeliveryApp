@@ -8,7 +8,7 @@ import './Dashboard.css';
 
 const Dashboard = () => {
   const { isAdmin } = useAuth();
-  const { isOnline, cacheTasks, getCachedTasks } = useOffline();
+  const { isOnline, isSyncing, cacheTasks, getCachedTasks } = useOffline();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('active');
@@ -16,9 +16,13 @@ const Dashboard = () => {
   const [usingCache, setUsingCache] = useState(false);
   const containerRef = useRef(null);
 
+  // Refetch when filter changes, when coming online, or when sync completes
   useEffect(() => {
-    fetchTasks();
-  }, [filter, isOnline]);
+    // Only fetch if not currently syncing (wait for sync to complete)
+    if (!isSyncing) {
+      fetchTasks();
+    }
+  }, [filter, isOnline, isSyncing]);
 
   const fetchTasks = async () => {
     try {
@@ -64,6 +68,16 @@ const Dashboard = () => {
     } else if (filter !== 'all') {
       filteredTasks = taskList.filter(task => task.status === filter);
     }
+
+    // Sort completed (paid) items by most recent first
+    if (filter === 'paid') {
+      filteredTasks = [...filteredTasks].sort((a, b) => {
+        const dateA = a.paid_at ? new Date(a.paid_at) : new Date(0);
+        const dateB = b.paid_at ? new Date(b.paid_at) : new Date(0);
+        return dateB - dateA;
+      });
+    }
+
     setTasks(filteredTasks);
     setAllTasks(taskList);
   };

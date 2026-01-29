@@ -6,7 +6,7 @@ import anime from 'animejs';
 import './Dashboard.css';
 
 const PickupDashboard = () => {
-  const { isOnline, cachePickups, getCachedPickups } = useOffline();
+  const { isOnline, isSyncing, cachePickups, getCachedPickups } = useOffline();
   const [pickups, setPickups] = useState([]);
   const [stats, setStats] = useState({
     pending: 0,
@@ -68,9 +68,13 @@ const PickupDashboard = () => {
     };
   };
 
+  // Refetch when coming online or when sync completes
   useEffect(() => {
-    fetchPickups();
-  }, [isOnline]);
+    // Only fetch if not currently syncing (wait for sync to complete)
+    if (!isSyncing) {
+      fetchPickups();
+    }
+  }, [isOnline, isSyncing]);
 
   // Entrance animation for cards
   useEffect(() => {
@@ -110,6 +114,15 @@ const PickupDashboard = () => {
         (p.customer_email && p.customer_email.toLowerCase().includes(search)) ||
         (p.customer_phone && p.customer_phone.includes(search))
       );
+    }
+
+    // Sort completed pickups by most recent first
+    if (filter === 'completed') {
+      filtered = [...filtered].sort((a, b) => {
+        const dateA = a.completed_at ? new Date(a.completed_at) : new Date(0);
+        const dateB = b.completed_at ? new Date(b.completed_at) : new Date(0);
+        return dateB - dateA;
+      });
     }
 
     return filtered;
