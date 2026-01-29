@@ -10,7 +10,7 @@ import './TaskDetail.css'; // Reuse TaskDetail styles
 const PickupDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isOnline, getCachedPickup } = useOffline();
+  const { isOnline, getCachedPickup, queueAction, updateCachedPickup } = useOffline();
   const [pickup, setPickup] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -88,8 +88,31 @@ const PickupDetail = () => {
     if (!confirm('Mark this pickup as completed?')) return;
     setUpdating(true);
     try {
-      await pickupsAPI.complete(id);
-      await fetchPickup();
+      if (isOnline) {
+        await pickupsAPI.complete(id);
+        await fetchPickup();
+      } else {
+        // Queue action for later sync
+        await queueAction({
+          type: 'COMPLETE_PICKUP',
+          pickupId: parseInt(id),
+        });
+
+        // Update local cache optimistically
+        await updateCachedPickup(parseInt(id), {
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+        });
+
+        // Update local state
+        setPickup(prev => ({
+          ...prev,
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+        }));
+
+        alert('Pickup marked as completed. Will sync when back online.');
+      }
     } catch (err) {
       console.error('Error completing pickup:', err);
       alert('Failed to complete pickup');
