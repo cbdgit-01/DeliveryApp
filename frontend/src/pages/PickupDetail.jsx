@@ -10,7 +10,7 @@ import './TaskDetail.css'; // Reuse TaskDetail styles
 const PickupDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isOnline, getCachedPickup, queueAction, updateCachedPickup } = useOffline();
+  const { isOnline, isSyncing, getCachedPickup, queueAction, updateCachedPickup } = useOffline();
   const [pickup, setPickup] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -80,9 +80,13 @@ const PickupDetail = () => {
     }
   };
 
+  // Refetch when id changes, when coming online, or when sync completes
   useEffect(() => {
-    fetchPickup();
-  }, [id, isOnline]);
+    // Only fetch if not currently syncing (wait for sync to complete)
+    if (!isSyncing) {
+      fetchPickup();
+    }
+  }, [id, isOnline, isSyncing]);
 
   const handleComplete = async () => {
     if (!confirm('Mark this pickup as completed?')) return;

@@ -13,7 +13,7 @@ const TaskDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { isOnline, queueAction, updateCachedTask, getCachedTask, savePendingSignature, getPendingSignature } = useOffline();
+  const { isOnline, isSyncing, queueAction, updateCachedTask, getCachedTask, savePendingSignature, getPendingSignature } = useOffline();
   const [task, setTask] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -42,12 +42,16 @@ const TaskDetail = () => {
     delivery_notes: '',
   });
 
+  // Refetch when id changes, when coming online, or when sync completes
   useEffect(() => {
-    fetchTask();
-    if (isOnline) {
-      fetchUpcomingEvents();
+    // Only fetch if not currently syncing (wait for sync to complete)
+    if (!isSyncing) {
+      fetchTask();
+      if (isOnline) {
+        fetchUpcomingEvents();
+      }
     }
-  }, [id, isOnline]);
+  }, [id, isOnline, isSyncing]);
 
   const fetchTask = async () => {
     try {

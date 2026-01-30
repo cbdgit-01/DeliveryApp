@@ -32,7 +32,11 @@ const CreatePickup = () => {
   const [imagePreviews, setImagePreviews] = useState([]);
 
   const formatPhoneNumber = (value) => {
-    const phoneNumber = value.replace(/\D/g, '');
+    let phoneNumber = value.replace(/\D/g, '');
+    // Strip leading '1' country code if present (11 digits starting with 1)
+    if (phoneNumber.length === 11 && phoneNumber.startsWith('1')) {
+      phoneNumber = phoneNumber.slice(1);
+    }
     if (phoneNumber.length <= 3) {
       return phoneNumber;
     } else if (phoneNumber.length <= 6) {
